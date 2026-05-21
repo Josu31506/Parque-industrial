@@ -7,7 +7,6 @@ export default function Footer() {
         <div className={styles.links}>
           <a href="#politicas">Politicas de privacidad</a>
           <a href="#terminos">Terminos y condiciones</a>
-          <a href="#cambios">Cambios y devoluciones</a>
         </div>
 
         <div className={styles.contact}>

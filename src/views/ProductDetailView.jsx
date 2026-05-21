@@ -4,15 +4,15 @@ import styles from './ProductDetailView.module.css';
 
 const getImageStyle = (image) => {
   if (!image) return {};
-  return image.includes('gradient') ? { background: image } : { backgroundImage: `url(${image})` };
+  return image.includes('gradient')
+    ? { background: image }
+    : { backgroundImage: `url(${image})` };
 };
 
 export default function ProductDetailView({
   cartMessage,
   onAddToCart,
   onBack,
-  onBuyNow,
-  onNavigate,
   product,
 }) {
   const [activeTab, setActiveTab] = useState('description');
@@ -23,7 +23,14 @@ export default function ProductDetailView({
       <main className={styles.page}>
         <section className={`${styles.empty} container`}>
           <h1>Producto no encontrado</h1>
-          <button className="primaryButton" type="button" onClick={onBack}>Volver</button>
+
+          <button
+            className="primaryButton"
+            type="button"
+            onClick={onBack}
+          >
+            Volver
+          </button>
         </section>
       </main>
     );
@@ -34,7 +41,10 @@ export default function ProductDetailView({
   return (
     <main className={`${styles.page} ${isEco ? styles.ecoPage : ''}`}>
       <section className={`${styles.layout} container`}>
-        <div className={styles.imagePanel} style={getImageStyle(product.image)} />
+        <div
+          className={styles.imagePanel}
+          style={getImageStyle(product.image)}
+        />
 
         <article className={styles.infoPanel}>
           {product.badge && (
@@ -44,22 +54,31 @@ export default function ProductDetailView({
           )}
 
           <p className={styles.storeName}>{product.storeName}</p>
+
           <h1>{product.title}</h1>
-          <p className={styles.rating}>★★★★★ <span>{product.rating}</span></p>
+
+          <p className={styles.rating}>
+            ★★★★★ <span>{product.rating}</span>
+          </p>
 
           <div className={styles.priceRow}>
             <strong>{product.price}</strong>
             {product.oldPrice && <span>{product.oldPrice}</span>}
           </div>
 
-          <div className={styles.tabs} role="tablist" aria-label="Informacion del producto">
+          <div
+            className={styles.tabs}
+            role="tablist"
+            aria-label="Información del producto"
+          >
             <button
               className={activeTab === 'description' ? styles.active : undefined}
               type="button"
               onClick={() => setActiveTab('description')}
             >
-              Descripcion
+              Descripción
             </button>
+
             <button
               className={activeTab === 'producer' ? styles.active : undefined}
               type="button"
@@ -67,50 +86,43 @@ export default function ProductDetailView({
             >
               Productora
             </button>
-            <button
-              className={activeTab === 'purchase' ? styles.active : undefined}
-              type="button"
-              onClick={() => setActiveTab('purchase')}
-            >
-              Compra
-            </button>
           </div>
 
           <div className={styles.tabPanel}>
-            {activeTab === 'description' && <p>{product.description}</p>}
+            {activeTab === 'description' && (
+              <p>{product.description}</p>
+            )}
 
             {activeTab === 'producer' && (
               <div>
                 <h2>{producer?.name}</h2>
                 <p>{producer?.description}</p>
-                <small>{producer?.type} · {producer?.location}</small>
-              </div>
-            )}
-
-            {activeTab === 'purchase' && (
-              <div>
-                <p>Agrega este producto al carrito o continua directamente con una compra simulada.</p>
-                {cartMessage && <p className={styles.confirmation}>{cartMessage}</p>}
-                <div className={styles.purchaseActions}>
-                  <button className="primaryButton" type="button" onClick={() => onAddToCart(product.id)}>
-                    Agregar al carrito
-                  </button>
-                  <button className={isEco ? styles.ecoButton : 'accentButton'} type="button" onClick={() => onBuyNow(product.id)}>
-                    Comprar ahora
-                  </button>
-                </div>
+                <small>
+                  {producer?.type} · {producer?.location}
+                </small>
               </div>
             )}
           </div>
 
+          {cartMessage && (
+            <p className={styles.confirmation}>{cartMessage}</p>
+          )}
+
           <div className={styles.actions}>
-            <button className="primaryButton" type="button" onClick={onBack}>Volver</button>
+            <button
+              className="primaryButton"
+              type="button"
+              onClick={onBack}
+            >
+              Volver
+            </button>
+
             <button
               className={isEco ? styles.ecoButton : 'accentButton'}
               type="button"
-              onClick={() => onNavigate(isEco ? 'verdecito' : 'home')}
+              onClick={() => onAddToCart(product.id)}
             >
-              Ver mas productos
+              Agregar al carrito
             </button>
           </div>
         </article>

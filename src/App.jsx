@@ -156,8 +156,6 @@ export default function App() {
           cartMessage={cartMessage}
           onAddToCart={addToCart}
           onBack={() => navigate(previousView)}
-          onBuyNow={buyNow}
-          onNavigate={navigate}
           product={selectedProduct}
         />
       );
@@ -203,15 +201,17 @@ export default function App() {
   };
 
   return (
-    <>
+    <div className="appLayout">
       <Navbar
         activeView={view}
         cartCount={cartCount}
         currentUser={currentUser}
         onNavigate={navigate}
       />
-      {renderView()}
+      <div className="appMain">
+        {renderView()}
+      </div>
       <Footer />
-    </>
+    </div>
   );
 }

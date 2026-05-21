@@ -24,7 +24,7 @@ export const categories = [
   { name: 'Salas', rating: 4.9, reviews: 214, image: 'https://plus.unsplash.com/premium_photo-1661926736128-f2b643f91d1e?w=600&auto=format&fit=crop&q=60' },
   { name: 'Dormitorios', rating: 4.7, reviews: 98, image: 'https://images.pexels.com/photos/12277297/pexels-photo-12277297.jpeg' },
   { name: 'Oficinas', rating: 4.8, reviews: 83, image: 'https://plus.unsplash.com/premium_photo-1681487178876-a1156952ec60?w=600&auto=format&fit=crop&q=60' },
-  { name: 'Decoracion', rating: 4.6, reviews: 75, image: 'linear-gradient(135deg, #e59866, #f7eee8)' },
+  { name: 'Decoracion', rating: 4.6, reviews: 75, image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQFHOuRrgp8zqsN6rutZpG7KTF8P4KhdDZaTw&s' },
 ];
 
 export const products = [
@@ -45,7 +45,7 @@ export const products = [
     id: 'mesa-comedor-extensible',
     badge: 'Oferta',
     type: 'featured',
-    image: 'https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcT0XCvEH7EvOMuDxSkwSP4h865HUmXGLOB6lD0tOtbeBHyK2bAe0QkOq7ZMZgswjAw_fkv6TWzF1liEIShYl5uXOybz_0WVMRz7F_E3uFyGXOck2cEDPUCvaQ338JzlrA&usqp=CAc',
+    image: 'https://media.adeo.com/mkp/19e252ea7ce938bf65f4a97475195bbd/media.jpg?width=650&height=650&format=jpg&quality=80&fit=bounds',
     storeName: 'Taller Norte',
     title: 'Mesa de comedor extensible para seis personas',
     rating: 4.7,
@@ -86,7 +86,7 @@ export const products = [
     id: 'banco-madera-recuperada',
     badge: '🌿 Producto Sostenible',
     type: 'eco',
-    image: 'linear-gradient(135deg, #6f8f5d, #dbe7cf)',
+    image: 'https://i.ebayimg.com/images/g/wRUAAeSwJjtpIG~E/s-l1200.webp',
     storeName: 'Bancos EcoPeru',
     title: 'Banco de madera recuperada con acabado natural',
     rating: 4.9,

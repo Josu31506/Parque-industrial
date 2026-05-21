@@ -16,15 +16,31 @@
 }
 
 html {
+  min-height: 100%;
   scroll-behavior: smooth;
 }
 
 body {
+  min-height: 100%;
   margin: 0;
   color: var(--color-text);
   background: var(--color-bg);
   font-family: "Segoe UI", Roboto, Arial, sans-serif;
   line-height: 1.5;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.appLayout {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.appMain {
+  flex: 1;
 }
 
 button,

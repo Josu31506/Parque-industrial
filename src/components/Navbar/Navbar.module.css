@@ -2,8 +2,8 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgba(255, 255, 255, 0.96);
-  border-bottom: 1px solid var(--color-line);
+  background: #07497f;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
   backdrop-filter: blur(14px);
 }
 
@@ -11,20 +11,31 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 78px;
+  min-height: 82px;
   gap: 22px;
 }
 
-.logo {
+/* Botón contenedor del logo */
+.logoButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   padding: 0;
   border: 0;
-  color: var(--color-primary);
   background: transparent;
-  font-size: 1.15rem;
-  font-weight: 800;
-  white-space: nowrap;
+  cursor: pointer;
 }
 
+/* Imagen del logo */
+.logoImage {
+  width: 210px;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+
+/* Menú principal */
 .menu {
   display: flex;
   align-items: center;
@@ -42,29 +53,37 @@
   gap: 6px;
   padding: 0;
   border: 0;
-  color: var(--color-primary);
+  color: #ffffff;
   background: transparent;
   font-size: 0.94rem;
-  font-weight: 650;
+  font-weight: 750;
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.2s ease;
 }
 
+.menu button:hover {
+  color: #e8c217; /* Amarillo del logo */
+  transform: translateY(-1px);
+}
+
+.menu .active {
+  color: #e8c217;
+}
+
+/* Contador del carrito */
 .menu span {
   display: grid;
   min-width: 20px;
   height: 20px;
   place-items: center;
   border-radius: 999px;
-  color: #fff;
-  background: var(--color-accent);
+  color: #07497f;
+  background: #e8c217;
   font-size: 0.72rem;
   font-weight: 900;
 }
 
-.menu button:hover,
-.menu .active {
-  color: var(--color-accent);
-}
-
+/* Buscador y botón cuenta */
 .actions {
   display: flex;
   align-items: center;
@@ -73,12 +92,34 @@
 
 .search input {
   width: 130px;
-  padding: 9px 12px;
-  border: 1px solid var(--color-line);
-  border-radius: 8px;
-  color: var(--color-text);
-  background: #fff;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 10px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
   outline: none;
+}
+
+.search input::placeholder {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.search input:focus {
+  border-color: #e8c217;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Botón Mi cuenta / Ingresar dentro del navbar */
+.actions :global(.primaryButton) {
+  color: #07497f;
+  background: #ffffff;
+  border: 1px solid #ffffff;
+}
+
+.actions :global(.primaryButton):hover {
+  color: #07497f;
+  background: #e8c217;
+  border-color: #e8c217;
 }
 
 @media (max-width: 1040px) {
@@ -88,9 +129,14 @@
     padding: 16px 0;
   }
 
+  .logoImage {
+    width: 190px;
+  }
+
   .menu {
     justify-content: flex-start;
     flex-wrap: wrap;
+    gap: 16px;
   }
 
   .actions,

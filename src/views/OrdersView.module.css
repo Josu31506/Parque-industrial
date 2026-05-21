@@ -1,69 +1,214 @@
 .page {
-  min-height: 68vh;
-  padding: 76px 0;
-  background: var(--color-bg);
+  min-height: calc(100vh - 180px);
+  padding: 72px 0;
+  background:
+    radial-gradient(circle at top left, rgba(143, 184, 104, 0.16), transparent 34%),
+    #f8faf6;
+}
+
+.content {
+  max-width: 1050px;
 }
 
 .heading {
-  margin-bottom: 24px;
+  margin-bottom: 34px;
+}
+
+.kicker {
+  display: inline-flex;
+  margin-bottom: 10px;
+  color: #e69562;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .heading h1 {
-  margin: 0 0 8px;
-  color: var(--color-primary);
-}
-
-.heading p,
-.card p,
-.empty p {
   margin: 0;
-  color: var(--color-muted);
+  color: #0d2f5f;
+  font-size: clamp(2.2rem, 4vw, 3.4rem);
+  line-height: 1.05;
 }
 
+.heading p {
+  max-width: 620px;
+  margin: 14px 0 0;
+  color: #667085;
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+/* Estado vacío */
+.empty {
+  max-width: 620px;
+  padding: 42px;
+  border: 1px solid #dfe5dd;
+  border-radius: 26px;
+  background: #ffffff;
+  box-shadow: 0 20px 48px rgba(15, 47, 95, 0.08);
+}
+
+.emptyIcon {
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 18px;
+  border-radius: 22px;
+  background: #eef7e8;
+  font-size: 2rem;
+}
+
+.empty h2 {
+  margin: 0;
+  color: #0d2f5f;
+  font-size: 1.55rem;
+}
+
+.empty p {
+  max-width: 480px;
+  margin: 12px 0 24px;
+  color: #667085;
+  line-height: 1.55;
+}
+
+/* Lista de pedidos */
 .list {
   display: grid;
-  gap: 14px;
-}
-
-.card,
-.empty {
-  border: 1px solid rgba(15, 44, 89, 0.12);
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 10px 24px rgba(15, 44, 89, 0.06);
+  gap: 18px;
 }
 
 .card {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
-  gap: 18px;
+  grid-template-columns: 1.5fr 0.7fr auto auto;
   align-items: center;
-  padding: 18px;
+  gap: 22px;
+
+  padding: 22px;
+  border: 1px solid #dfe5dd;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 16px 40px rgba(15, 47, 95, 0.07);
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
 }
 
-.card h2 {
-  margin: 0;
-  color: var(--color-primary);
-  font-size: 1.05rem;
+.card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(46, 125, 50, 0.35);
+  box-shadow: 0 22px 50px rgba(15, 47, 95, 0.11);
 }
 
-.card strong {
-  color: var(--color-primary);
+.orderInfo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
-.card span {
-  color: var(--color-accent);
-  font-weight: 900;
-}
-
-.empty {
+.orderIcon {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 56px;
   display: grid;
-  gap: 14px;
-  padding: 24px;
+  place-items: center;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #eef7e8, #ffffff);
+  border: 1px solid #dfe5dd;
+  font-size: 1.5rem;
 }
 
-@media (max-width: 760px) {
+.orderInfo h2 {
+  margin: 0;
+  color: #0d2f5f;
+  font-size: 1.2rem;
+}
+
+.orderInfo p {
+  margin: 6px 0 0;
+  color: #667085;
+  font-size: 0.95rem;
+}
+
+.amountBox {
+  display: grid;
+  gap: 4px;
+}
+
+.amountBox span {
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.amountBox strong {
+  color: #0d2f5f;
+  font-size: 1.1rem;
+}
+
+.statusBadge {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: #2e7d32;
+  background: #eef7e8;
+  border: 1px solid rgba(46, 125, 50, 0.18);
+  font-size: 0.86rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+/* Responsive */
+@media (max-width: 920px) {
   .card {
     grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .amountBox {
+    padding-top: 14px;
+    border-top: 1px solid #eef0ec;
+  }
+
+  .statusBadge {
+    justify-self: start;
+  }
+
+  .card button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 680px) {
+  .page {
+    padding: 48px 0;
+  }
+
+  .empty {
+    padding: 30px 24px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  .orderInfo {
+    align-items: flex-start;
+  }
+
+  .orderIcon {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
+    border-radius: 16px;
+    font-size: 1.25rem;
   }
 }
