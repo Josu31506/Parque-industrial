@@ -1,0 +1,139 @@
+.hero {
+  display: flex;
+  align-items: center;
+  min-height: 580px;
+  color: #fff;
+  background:
+    linear-gradient(90deg, rgba(15, 44, 89, 0.88), rgba(15, 44, 89, 0.48)),
+    radial-gradient(circle at 78% 40%, rgba(229, 152, 102, 0.52), transparent 28%),
+    linear-gradient(135deg, #25364f 0%, #bb8c67 48%, #ded3c2 100%);
+}
+
+.heroContent {
+  max-width: 1180px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  max-width: 780px;
+  margin: 0;
+  font-size: clamp(2.8rem, 7vw, 5.3rem);
+  line-height: 1.02;
+}
+
+.heroCopy {
+  max-width: 660px;
+  margin: 18px 0 32px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.12rem;
+}
+
+.heroSearch {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  max-width: 720px;
+  padding: 8px;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.22);
+}
+
+.heroSearch input {
+  min-height: 52px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--color-text);
+  outline: none;
+}
+
+.categoryGrid,
+.productGrid {
+  display: grid;
+  gap: 22px;
+}
+
+.categoryGrid {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.productsSection {
+  background: #fff;
+}
+
+.productGrid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.newsletter {
+  padding: 56px 0;
+  color: #fff;
+  background: var(--color-primary);
+}
+
+.newsletterLayout {
+  display: grid;
+  grid-template-columns: 1fr minmax(320px, 520px);
+  align-items: center;
+  gap: 36px;
+}
+
+.newsletter h2 {
+  margin: 0 0 8px;
+  font-size: 2rem;
+}
+
+.newsletter p {
+  max-width: 620px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.newsletterForm {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.newsletterForm input {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  color: var(--color-text);
+  outline: none;
+}
+
+@media (max-width: 1040px) {
+  .categoryGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .productGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .newsletterLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .hero {
+    min-height: 620px;
+  }
+
+  .heroSearch,
+  .newsletterForm,
+  .categoryGrid,
+  .productGrid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,99 @@
+.card {
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  flex-direction: column;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: var(--color-surface);
+  box-shadow: 0 10px 26px rgba(15, 44, 89, 0.08);
+}
+
+.badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 2;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.newBadge {
+  background: var(--color-primary);
+}
+
+.offerBadge {
+  background: var(--color-accent);
+}
+
+.ecoBadge {
+  background: var(--color-eco);
+}
+
+.image {
+  min-height: 220px;
+  background: linear-gradient(135deg, #d9c7b5, #f3eee8);
+  background-position: center;
+  background-size: cover;
+}
+
+.info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 18px;
+}
+
+.storeName {
+  margin: 0 0 8px;
+  color: var(--color-muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.info h3 {
+  min-height: 76px;
+  margin: 0;
+  color: var(--color-primary);
+  font-size: 1.02rem;
+}
+
+.rating {
+  margin: 8px 0 0;
+  color: #f2b01e;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.rating span {
+  color: var(--color-muted);
+  font-weight: 650;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 16px 0 18px;
+}
+
+.price {
+  color: var(--color-primary);
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.oldPrice {
+  color: var(--color-muted);
+  font-weight: 700;
+  text-decoration: line-through;
+}
+
+@media (max-width: 680px) {
+  .info h3 {
+    min-height: auto;
+  }
+}

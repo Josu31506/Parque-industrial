@@ -1,0 +1,33 @@
+.card {
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: var(--color-surface);
+  box-shadow: 0 10px 26px rgba(15, 44, 89, 0.08);
+}
+
+.image {
+  min-height: 128px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background-position: center;
+  background-size: cover;
+}
+
+.card h3 {
+  margin: 0;
+  color: var(--color-primary);
+}
+
+.rating {
+  margin: 8px 0 0;
+  color: #f2b01e;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.rating span {
+  color: var(--color-muted);
+  font-weight: 650;
+}

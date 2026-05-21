@@ -1,0 +1,147 @@
+.hero {
+  padding: 92px 0;
+  background: linear-gradient(135deg, var(--color-eco-soft), #ffffff 62%);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  align-items: center;
+  gap: 52px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--color-eco);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.copy h1 {
+  margin: 0;
+  color: var(--color-eco);
+  font-size: clamp(3rem, 7vw, 5.6rem);
+  line-height: 1;
+}
+
+.copy h2 {
+  margin: 12px 0 16px;
+  color: var(--color-primary);
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+}
+
+.copy p {
+  max-width: 670px;
+  color: #344054;
+  font-size: 1.05rem;
+}
+
+.checkList {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  margin: 28px 0 0;
+  list-style: none;
+}
+
+.checkList li {
+  position: relative;
+  padding-left: 34px;
+  color: var(--color-primary);
+  font-weight: 750;
+}
+
+.checkList li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: -1px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--color-eco);
+  text-align: center;
+  line-height: 24px;
+}
+
+.illustration {
+  display: flex;
+  justify-content: center;
+}
+
+.circle {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(420px, 82vw);
+  aspect-ratio: 1;
+  border: 16px solid rgba(46, 125, 50, 0.14);
+  border-radius: 50%;
+  background:
+    linear-gradient(135deg, rgba(46, 125, 50, 0.9), rgba(46, 125, 50, 0.42)),
+    linear-gradient(45deg, #af8f64, #f2d2a9);
+  box-shadow: var(--shadow-card);
+}
+
+.leaf {
+  font-size: 5rem;
+}
+
+.handmade {
+  position: absolute;
+  right: 22px;
+  bottom: 54px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  color: var(--color-eco);
+  background: #fff;
+  font-weight: 900;
+}
+
+.catalog {
+  background: #fff;
+}
+
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
+}
+
+.strip {
+  padding: 34px 0;
+  background: var(--color-eco-soft);
+  text-align: center;
+}
+
+.strip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  padding: 12px 24px;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--color-eco);
+  font-weight: 900;
+}
+
+@media (max-width: 1040px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .productGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 680px) {
+  .productGrid {
+    grid-template-columns: 1fr;
+  }
+}
