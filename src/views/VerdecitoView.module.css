@@ -145,6 +145,7 @@
 @media (max-width: 680px) {
   .hero {
     padding: 44px 0;
+    min-height: auto;
     background-position: center;
   }
 
@@ -159,8 +160,8 @@
   }
 
   .logoCircle {
-    width: 240px;
-    height: 240px;
+    width: 220px;
+    height: 220px;
   }
 
   .catalog {

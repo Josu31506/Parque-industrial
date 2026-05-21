@@ -346,5 +346,6 @@
   .quantity {
     justify-self: stretch;
     justify-content: space-between;
+    width: 100%;
   }
 }

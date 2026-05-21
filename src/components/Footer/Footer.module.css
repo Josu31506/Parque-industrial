@@ -41,5 +41,13 @@
   .layout {
     align-items: flex-start;
     flex-direction: column;
+    gap: 18px;
+  }
+
+  .links,
+  .contact,
+  .payments {
+    width: 100%;
+    justify-content: flex-start;
   }
 }

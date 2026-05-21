@@ -136,9 +136,27 @@
     padding: 70px 0;
   }
 
+  .heroContent {
+    max-width: 100%;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.4rem, 12vw, 3.6rem);
+    letter-spacing: -1px;
+  }
+
+  .heroCopy {
+    font-size: 1rem;
+  }
+
   .heroSearch {
     flex-direction: column;
     padding: 10px;
+  }
+
+  .heroSearch input,
+  .heroSearch button {
+    width: 100%;
   }
 
   .categoryGrid,
@@ -150,7 +168,9 @@
     flex-direction: column;
   }
 
-  .newsletterForm input {
-    min-width: 100%;
+  .newsletterForm input,
+  .newsletterForm button {
+    width: 100%;
+    min-width: 0;
   }
 }

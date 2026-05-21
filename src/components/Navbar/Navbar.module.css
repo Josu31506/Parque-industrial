@@ -130,21 +130,56 @@
   }
 
   .logoImage {
-    width: 190px;
+    width: 170px;
   }
 
   .menu {
+    width: 100%;
     justify-content: flex-start;
     flex-wrap: wrap;
-    gap: 16px;
+    gap: 14px;
   }
 
-  .actions,
+  .actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .search {
     width: 100%;
   }
 
   .search input {
     width: 100%;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .navbar {
+    gap: 14px;
+  }
+
+  .logoImage {
+    width: 150px;
+  }
+
+  .menu {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .menu button {
+    width: 100%;
+    justify-content: center;
+    min-height: 38px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
   }
 }
