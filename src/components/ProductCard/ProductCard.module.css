@@ -33,7 +33,16 @@
   background: var(--color-eco);
 }
 
+.imageButton,
+.titleButton {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
 .image {
+  display: block;
   min-height: 220px;
   background: linear-gradient(135deg, #d9c7b5, #f3eee8);
   background-position: center;
@@ -59,6 +68,10 @@
   margin: 0;
   color: var(--color-primary);
   font-size: 1.02rem;
+}
+
+.titleButton:hover h3 {
+  color: var(--color-accent);
 }
 
 .rating {

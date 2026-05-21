@@ -1,0 +1,208 @@
+.page {
+  padding: 76px 0;
+  background: var(--color-bg);
+}
+
+.ecoPage {
+  background: linear-gradient(135deg, var(--color-eco-soft), #fff 52%);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1.05fr);
+  gap: 34px;
+  align-items: start;
+}
+
+.imagePanel,
+.infoPanel,
+.empty {
+  border: 1px solid rgba(15, 44, 89, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow-card);
+}
+
+.imagePanel {
+  min-height: 520px;
+  background-color: #e9eef5;
+  background-position: center;
+  background-size: cover;
+}
+
+.infoPanel {
+  padding: 30px;
+}
+
+.badge {
+  display: inline-flex;
+  margin-bottom: 14px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.ecoBadge {
+  background: var(--color-eco);
+}
+
+.storeName {
+  margin: 0 0 8px;
+  color: var(--color-muted);
+  font-weight: 800;
+}
+
+.infoPanel h1 {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.08;
+}
+
+.rating {
+  color: #f2b01e;
+  font-weight: 900;
+}
+
+.rating span {
+  color: var(--color-muted);
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 18px 0 24px;
+}
+
+.priceRow strong {
+  color: var(--color-primary);
+  font-size: 2rem;
+}
+
+.priceRow span {
+  color: var(--color-muted);
+  font-weight: 800;
+  text-decoration: line-through;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 8px;
+  background: #eef3f8;
+}
+
+.tabs button {
+  flex: 1;
+  min-height: 42px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-primary);
+  background: transparent;
+  font-weight: 900;
+}
+
+.tabs .active {
+  color: #fff;
+  background: var(--color-primary);
+}
+
+.ecoPage .tabs {
+  background: var(--color-eco-soft);
+}
+
+.ecoPage .tabs .active {
+  background: var(--color-eco);
+}
+
+.tabPanel {
+  min-height: 156px;
+  margin-top: 18px;
+  padding: 20px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.tabPanel h2 {
+  margin: 0 0 8px;
+  color: var(--color-primary);
+}
+
+.tabPanel p {
+  margin-top: 0;
+  color: #344054;
+}
+
+.tabPanel small {
+  color: var(--color-muted);
+  font-weight: 800;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.purchaseActions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.confirmation {
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--color-primary);
+  background: #eef3f8;
+  font-weight: 800;
+}
+
+.ecoPage .confirmation {
+  color: var(--color-eco);
+  background: var(--color-eco-soft);
+}
+
+.ecoButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--color-eco);
+  font-weight: 800;
+}
+
+.empty {
+  display: grid;
+  gap: 16px;
+  padding: 30px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .imagePanel {
+    min-height: 360px;
+  }
+}
+
+@media (max-width: 620px) {
+  .tabs,
+  .actions {
+    flex-direction: column;
+  }
+}

@@ -36,12 +36,28 @@
 }
 
 .menu button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 0;
   border: 0;
   color: var(--color-primary);
   background: transparent;
   font-size: 0.94rem;
   font-weight: 650;
+}
+
+.menu span {
+  display: grid;
+  min-width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--color-accent);
+  font-size: 0.72rem;
+  font-weight: 900;
 }
 
 .menu button:hover,

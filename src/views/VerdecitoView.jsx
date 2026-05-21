@@ -1,66 +1,61 @@
 import ProductCard from '../components/ProductCard/ProductCard.jsx';
+import { products } from '../data/catalog.js';
 import styles from './VerdecitoView.module.css';
 
-const ecoProducts = [
-  {
-    badge: '🌿 Producto Sostenible',
-    image: 'linear-gradient(135deg, #6f8f5d, #dbe7cf)',
-    storeName: 'Bancos EcoPeru',
-    title: 'Banco de madera recuperada con acabado natural',
-    rating: 4.9,
-    price: 'S/. 420',
-  },
-  {
-    badge: '🌿 Producto Sostenible',
-    image: 'linear-gradient(135deg, #9e7f53, #e9dfc9)',
-    storeName: 'Villa Natural',
-    title: 'Silla artesanal con fibras naturales reforzadas',
-    rating: 4.7,
-    price: 'S/. 310',
-  },
-  {
-    badge: '🌿 Producto Sostenible',
-    image: 'linear-gradient(135deg, #2e7d32, #ccd9bc)',
-    storeName: 'EcoMuebles',
-    title: 'Estantería modular fabricada con tableros reciclados',
-    rating: 4.8,
-    price: 'S/. 680',
-  },
-  {
-    badge: '🌿 Producto Sostenible',
-    image: 'linear-gradient(135deg, #b1c28b, #f2ead6)',
-    storeName: 'DecoVerde',
-    title: 'Set decorativo de pared con piezas reutilizadas',
-    rating: 4.6,
-    price: 'S/. 190',
-  },
-];
+import imagenFondoLocal from '../assets/fondo1.jpeg';
+import logoEcoLocal from '../assets/logo.jpeg';
 
-export default function VerdecitoView() {
+export default function VerdecitoView({ onProductSelect }) {
+  const ecoProducts = products.filter((product) => product.type === 'eco');
+
   return (
-    <main>
-      <section className={styles.hero}>
+    <main className={styles.mainContent}>
+      <section
+        className={styles.hero}
+        style={{
+          backgroundImage: `linear-gradient(
+            90deg,
+            rgba(223, 235, 202, 0.74) 0%,
+            rgba(223, 235, 202, 0.50) 38%,
+            rgba(223, 235, 202, 0.14) 68%,
+            rgba(223, 235, 202, 0.02) 100%
+          ), url(${imagenFondoLocal})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
         <div className={`${styles.layout} container`}>
           <div className={styles.copy}>
-            <p className={styles.eyebrow}>Línea responsable</p>
-            <h1>Verdecito <span aria-hidden="true">🌱</span></h1>
-            <h2>Línea de Productos Sostenibles</h2>
-            <p>
-              Una selección de muebles creados con prácticas responsables, materiales recuperados y procesos alineados con los Objetivos de Desarrollo Sostenible (ODS).
-            </p>
+            <div className={styles.textBlock}>
+              <h1 className={styles.heroMessage}>
+                Productos sostenibles<br />
+                Hechos con propósito,<br />
+                pensados para durar.
+              </h1>
 
-            <ul className={styles.checkList}>
-              <li>Recolección y reutilización de materiales seleccionados.</li>
-              <li>Prácticas ecoamigables en talleres locales.</li>
-              <li>Etiqueta especial para identificar productos sostenibles.</li>
-            </ul>
+              <div className={styles.divider}></div>
+
+              <p className={styles.description}>
+                Apoyamos a los productores locales del Parque Industrial de Villa El Salvador,
+                comprometidos con un futuro más verde y responsable.
+              </p>
+            </div>
           </div>
 
-          <div className={styles.illustration} aria-label="Ilustración de trabajo artesanal ecoamigable">
-            <div className={styles.circle}>
-              <span className={styles.leaf}>🌱</span>
-              <span className={styles.handmade}>Hecho local</span>
-            </div>
+          <div
+            className={styles.illustration}
+            aria-label="Logo de la línea sostenible Verdecito"
+          >
+            <div
+              className={styles.logoCircle}
+              style={{
+                backgroundImage: `url(${logoEcoLocal})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+              }}
+            />
           </div>
         </div>
       </section>
@@ -68,20 +63,20 @@ export default function VerdecitoView() {
       <section className={`${styles.catalog} section`}>
         <div className="container">
           <div className="sectionHeader">
-            <h2>Revisa tus productos sostenibles <span aria-hidden="true">🌱</span></h2>
+            <h2>
+              Revisa tus productos sostenibles <span aria-hidden="true">🌱</span>
+            </h2>
           </div>
 
           <div className={styles.productGrid}>
             {ecoProducts.map((product) => (
-              <ProductCard key={`${product.storeName}-${product.title}`} {...product} />
+              <ProductCard
+                key={product.id}
+                {...product}
+                onClick={() => onProductSelect(product.id)}
+              />
             ))}
           </div>
-        </div>
-      </section>
-
-      <section className={styles.strip}>
-        <div className="container">
-          <button type="button">Explorar productos sostenibles</button>
         </div>
       </section>
     </main>

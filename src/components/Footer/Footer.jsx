@@ -5,8 +5,8 @@ export default function Footer() {
     <footer className={styles.footer}>
       <div className={`${styles.layout} container`}>
         <div className={styles.links}>
-          <a href="#politicas">Políticas de privacidad</a>
-          <a href="#terminos">Términos y condiciones</a>
+          <a href="#politicas">Politicas de privacidad</a>
+          <a href="#terminos">Terminos y condiciones</a>
           <a href="#cambios">Cambios y devoluciones</a>
         </div>
 

@@ -65,7 +65,10 @@ a {
 }
 
 .sectionLink {
+  padding: 0;
+  border: 0;
   color: var(--color-accent);
+  background: transparent;
   font-weight: 800;
 }
 
@@ -95,6 +98,14 @@ a {
 .accentButton:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 22px rgba(15, 44, 89, 0.18);
+}
+
+.primaryButton:disabled,
+.accentButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+  box-shadow: none;
 }
 
 @media (max-width: 680px) {

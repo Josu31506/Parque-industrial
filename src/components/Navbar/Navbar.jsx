@@ -2,14 +2,16 @@ import styles from './Navbar.module.css';
 
 const navItems = [
   { label: 'Inicio', view: 'home' },
-  { label: 'Categorías', anchor: 'categorias' },
+  { label: 'Categorias', anchor: 'categorias' },
   { label: 'Destacados', anchor: 'destacados' },
   { label: 'Tiendas', anchor: 'tiendas' },
   { label: 'Verdecito', view: 'verdecito' },
+  { label: 'Carrito', view: 'cart' },
+  { label: 'Pedidos', view: 'orders' },
   { label: 'Nosotros', anchor: 'nosotros' },
 ];
 
-export default function Navbar({ activeView = 'home', onNavigate }) {
+export default function Navbar({ activeView = 'home', cartCount = 0, currentUser, onNavigate }) {
   const handleNavClick = (item) => {
     if (item.view) {
       onNavigate?.(item.view);
@@ -29,7 +31,7 @@ export default function Navbar({ activeView = 'home', onNavigate }) {
 
   return (
     <header className={styles.header}>
-      <nav className={`${styles.navbar} container`} aria-label="Navegación principal">
+      <nav className={`${styles.navbar} container`} aria-label="Navegacion principal">
         <button className={styles.logo} type="button" onClick={() => onNavigate?.('home')}>
           Parque Industrial conecta.
         </button>
@@ -43,6 +45,7 @@ export default function Navbar({ activeView = 'home', onNavigate }) {
                 onClick={() => handleNavClick(item)}
               >
                 {item.label}
+                {item.view === 'cart' && cartCount > 0 ? <span>{cartCount}</span> : null}
               </button>
             </li>
           ))}
@@ -52,7 +55,9 @@ export default function Navbar({ activeView = 'home', onNavigate }) {
           <form className={styles.search} role="search" onSubmit={(event) => event.preventDefault()}>
             <input type="search" placeholder="Buscar" aria-label="Buscar productos" />
           </form>
-          <button className="primaryButton" type="button">Ingresar</button>
+          <button className="primaryButton" type="button" onClick={() => onNavigate?.(currentUser ? 'orders' : 'login')}>
+            {currentUser ? 'Mi cuenta' : 'Ingresar'}
+          </button>
         </div>
       </nav>
     </header>

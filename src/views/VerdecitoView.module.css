@@ -1,138 +1,139 @@
+.mainContent {
+  background-color: #ffffff;
+}
+
+/* Hero principal */
 .hero {
-  padding: 92px 0;
-  background: linear-gradient(135deg, var(--color-eco-soft), #ffffff 62%);
-}
-
-.layout {
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  width: 100%;
+  min-height: 540px;
+  display: flex;
   align-items: center;
-  gap: 52px;
+  padding: 60px 0;
+  box-sizing: border-box;
 }
 
-.eyebrow {
-  margin: 0 0 12px;
-  color: var(--color-eco);
-  font-size: 0.78rem;
+/* Distribución izquierda / derecha */
+.layout {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 50px;
+  width: 100%;
+}
+
+/* Columna izquierda */
+.copy {
+  flex: 1;
+  max-width: 620px;
+  padding-left: 10px;
+}
+
+.textBlock {
+  max-width: 600px;
+}
+
+/* Toda la frase con el mismo tono */
+.heroMessage {
+  font-size: 3.35rem;
   font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.copy h1 {
+  line-height: 1.08;
+  letter-spacing: -1.4px;
+  color: #0f4a25;
   margin: 0;
-  color: var(--color-eco);
-  font-size: clamp(3rem, 7vw, 5.6rem);
-  line-height: 1;
+
+  text-shadow:
+    0 2px 4px rgba(239, 237, 210, 0.82),
+    0 8px 20px rgba(15, 74, 37, 0.16);
 }
 
-.copy h2 {
-  margin: 12px 0 16px;
-  color: var(--color-primary);
-  font-size: clamp(1.5rem, 3vw, 2.2rem);
+/* Línea decorativa */
+.divider {
+  width: 66px;
+  height: 2px;
+  background: #7c9b5a;
+  margin: 28px 0 20px;
+  border-radius: 999px;
 }
 
-.copy p {
-  max-width: 670px;
-  color: #344054;
-  font-size: 1.05rem;
+/* Texto descriptivo */
+.description {
+  max-width: 500px;
+  margin: 0;
+  font-size: 1.14rem;
+  line-height: 1.55;
+  font-weight: 600;
+  color: #1d4c2f;
+
+  text-shadow: 0 2px 5px rgba(239, 237, 210, 0.8);
 }
 
-.checkList {
-  display: grid;
-  gap: 12px;
-  padding: 0;
-  margin: 28px 0 0;
-  list-style: none;
-}
-
-.checkList li {
-  position: relative;
-  padding-left: 34px;
-  color: var(--color-primary);
-  font-weight: 750;
-}
-
-.checkList li::before {
-  content: "✓";
-  position: absolute;
-  left: 0;
-  top: -1px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  color: #fff;
-  background: var(--color-eco);
-  text-align: center;
-  line-height: 24px;
-}
-
+/* Columna derecha */
 .illustration {
+  flex: 1;
+  max-width: 450px;
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
-.circle {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: min(420px, 82vw);
-  aspect-ratio: 1;
-  border: 16px solid rgba(46, 125, 50, 0.14);
+/* Logo circular */
+.logoCircle {
+  width: 320px;
+  height: 320px;
   border-radius: 50%;
-  background:
-    linear-gradient(135deg, rgba(46, 125, 50, 0.9), rgba(46, 125, 50, 0.42)),
-    linear-gradient(45deg, #af8f64, #f2d2a9);
-  box-shadow: var(--shadow-card);
+  background-color: #f7f7f2;
+  box-shadow: 0 14px 36px rgba(10, 55, 25, 0.18);
+  border: 7px solid rgba(255, 255, 255, 0.9);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.leaf {
-  font-size: 5rem;
+.logoCircle:hover {
+  transform: scale(1.035);
+  box-shadow: 0 18px 42px rgba(10, 55, 25, 0.24);
 }
 
-.handmade {
-  position: absolute;
-  right: 22px;
-  bottom: 54px;
-  padding: 10px 16px;
-  border-radius: 999px;
-  color: var(--color-eco);
-  background: #fff;
-  font-weight: 900;
-}
-
+/* Catálogo */
 .catalog {
-  background: #fff;
+  background: #ffffff;
+  padding: 60px 0;
 }
 
 .productGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 22px;
+  margin-top: 30px;
 }
 
-.strip {
-  padding: 34px 0;
-  background: var(--color-eco-soft);
-  text-align: center;
-}
-
-.strip button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 50px;
-  padding: 12px 24px;
-  border: 0;
-  border-radius: 8px;
-  color: #fff;
-  background: var(--color-eco);
-  font-weight: 900;
-}
-
+/* Responsive tablet */
 @media (max-width: 1040px) {
+  .hero {
+    min-height: auto;
+    padding: 54px 0;
+  }
+
   .layout {
-    grid-template-columns: 1fr;
+    flex-direction: column-reverse;
+    text-align: center;
+    gap: 36px;
+  }
+
+  .copy {
+    padding: 0 18px;
+    max-width: 100%;
+  }
+
+  .textBlock {
+    max-width: 100%;
+  }
+
+  .divider {
+    margin: 26px auto 20px;
+  }
+
+  .description {
+    max-width: 640px;
+    margin: 0 auto;
   }
 
   .productGrid {
@@ -140,8 +141,34 @@
   }
 }
 
+/* Responsive móvil */
 @media (max-width: 680px) {
+  .hero {
+    padding: 44px 0;
+    background-position: center;
+  }
+
+  .heroMessage {
+    font-size: 2.2rem;
+    letter-spacing: -0.8px;
+    line-height: 1.12;
+  }
+
+  .description {
+    font-size: 1rem;
+  }
+
+  .logoCircle {
+    width: 240px;
+    height: 240px;
+  }
+
+  .catalog {
+    padding: 44px 0;
+  }
+
   .productGrid {
     grid-template-columns: 1fr;
+    gap: 24px;
   }
 }
