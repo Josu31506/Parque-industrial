@@ -50,6 +50,7 @@
   display: block;
 }
 
+/* Logo móvil oculto en desktop */
 .mobileLogoCircle {
   display: none;
 }
@@ -84,7 +85,7 @@
   align-items: center;
 }
 
-/* Logo circular */
+/* Logo circular desktop */
 .logoCircle {
   width: 320px;
   height: 320px;
@@ -151,14 +152,39 @@
 
 /* Responsive móvil */
 @media (max-width: 680px) {
+  .hero {
+    min-height: auto;
+    padding: 46px 0 54px;
+    background-position: center;
+  }
+
+  .layout {
+    flex-direction: column;
+    text-align: left;
+    gap: 0;
+  }
+
+  .copy {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 20px;
+  }
+
+  .textBlock {
+    max-width: 100%;
+  }
+
+  /* Oculta el logo grande de desktop en móvil */
+  .illustration {
+    display: none;
+  }
+
   .heroMessage {
     display: grid;
     gap: 3px;
     max-width: 100%;
     margin: 0;
     color: #0f4a25;
-
-    /* MÁS PEQUEÑO */
     font-size: clamp(1.75rem, 7vw, 2.25rem);
     line-height: 1.12;
     letter-spacing: -0.5px;
@@ -183,8 +209,27 @@
     border: 5px solid rgba(255, 255, 255, 0.95);
     box-shadow: 0 12px 28px rgba(10, 55, 25, 0.22);
   }
+
+  .divider {
+    width: 64px;
+    height: 2px;
+    margin: 24px 0 18px;
+  }
+
+  .description {
+    max-width: 100%;
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.55;
+    text-align: left;
+  }
+
+  .productGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
+/* Celulares muy angostos */
 @media (max-width: 420px) {
   .heroMessage {
     font-size: clamp(1.55rem, 6.6vw, 1.95rem);
@@ -201,5 +246,9 @@
     width: 76px;
     height: 76px;
     margin-top: -10px;
+  }
+
+  .description {
+    font-size: 0.96rem;
   }
 }
