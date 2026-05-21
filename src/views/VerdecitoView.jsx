@@ -29,9 +29,16 @@ export default function VerdecitoView({ onProductSelect }) {
           <div className={styles.copy}>
             <div className={styles.textBlock}>
               <h1 className={styles.heroMessage}>
-                Productos sostenibles<br />
-                Hechos con propósito,<br />
-                pensados para durar.
+                <span>Productos sostenibles</span>
+                <span className={styles.inlineLogoRow}>
+                  <span>Hechos con propósito</span>
+                  <span
+                    className={styles.mobileLogoCircle}
+                    style={{ backgroundImage: `url(${logoEcoLocal})` }}
+                    aria-hidden="true"
+                  />
+                </span>
+                <span>Pensados para durar</span>
               </h1>
 
               <div className={styles.divider}></div>
@@ -64,7 +71,7 @@ export default function VerdecitoView({ onProductSelect }) {
         <div className="container">
           <div className="sectionHeader">
             <h2>
-              Revisa tus productos sostenibles <span aria-hidden="true">🌱</span>
+              Revisa tus productos sostenibles <span aria-hidden="true"></span>
             </h2>
           </div>
 
