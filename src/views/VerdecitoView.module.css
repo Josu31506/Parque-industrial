@@ -151,56 +151,31 @@
 
 /* Responsive móvil */
 @media (max-width: 680px) {
-  .hero {
-    min-height: auto;
-    padding: 46px 0 54px;
-    background-position: center;
-  }
-
-  .layout {
-    flex-direction: column;
-    text-align: left;
-    gap: 0;
-  }
-
-  .copy {
-    width: 100%;
-    max-width: 100%;
-    padding: 0 20px;
-  }
-
-  .textBlock {
-    position: relative;
-    max-width: 100%;
-  }
-
   .heroMessage {
     display: grid;
-    gap: 2px;
+    gap: 3px;
     max-width: 100%;
     margin: 0;
     color: #0f4a25;
-    font-size: clamp(2.25rem, 9vw, 3.05rem);
-    line-height: 1.08;
-    letter-spacing: -1px;
-  }
 
-  .heroMessage span {
-    display: block;
+    /* MÁS PEQUEÑO */
+    font-size: clamp(1.75rem, 7vw, 2.25rem);
+    line-height: 1.12;
+    letter-spacing: -0.5px;
   }
 
   .inlineLogoRow {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 104px;
+    grid-template-columns: minmax(0, 1fr) 92px;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
 
   .mobileLogoCircle {
     display: block;
-    width: 104px;
-    height: 104px;
-    margin-top: -20px;
+    width: 92px;
+    height: 92px;
+    margin-top: -14px;
     border-radius: 50%;
     background-size: cover;
     background-position: center;
@@ -208,45 +183,23 @@
     border: 5px solid rgba(255, 255, 255, 0.95);
     box-shadow: 0 12px 28px rgba(10, 55, 25, 0.22);
   }
-
-  .illustration {
-    display: none;
-  }
-
-  .divider {
-    width: 64px;
-    height: 2px;
-    margin: 26px 0 20px;
-  }
-
-  .description {
-    max-width: 100%;
-    margin: 0;
-    color: #1d4c2f;
-    font-size: 1rem;
-    line-height: 1.6;
-    font-weight: 700;
-    text-align: left;
-  }
 }
+
 @media (max-width: 420px) {
   .heroMessage {
-    font-size: clamp(2rem, 8.5vw, 2.45rem);
-    line-height: 1.1;
+    font-size: clamp(1.55rem, 6.6vw, 1.95rem);
+    line-height: 1.14;
+    letter-spacing: -0.3px;
   }
 
   .inlineLogoRow {
-    grid-template-columns: minmax(0, 1fr) 88px;
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) 76px;
+    gap: 8px;
   }
 
   .mobileLogoCircle {
-    width: 88px;
-    height: 88px;
-    margin-top: -18px;
-  }
-
-  .description {
-    font-size: 0.96rem;
+    width: 76px;
+    height: 76px;
+    margin-top: -10px;
   }
 }
