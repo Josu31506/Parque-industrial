@@ -152,60 +152,61 @@
 /* Responsive móvil */
 @media (max-width: 680px) {
   .hero {
-    padding: 44px 0;
     min-height: auto;
+    padding: 46px 0 54px;
     background-position: center;
   }
 
   .layout {
     flex-direction: column;
     text-align: left;
-    gap: 24px;
+    gap: 0;
   }
 
   .copy {
     width: 100%;
-    padding: 0 18px;
     max-width: 100%;
+    padding: 0 20px;
   }
 
   .textBlock {
+    position: relative;
     max-width: 100%;
   }
 
   .heroMessage {
     display: grid;
-    gap: 4px;
-    font-size: clamp(2rem, 9vw, 2.75rem);
-    letter-spacing: -0.9px;
+    gap: 2px;
+    max-width: 100%;
+    margin: 0;
+    color: #0f4a25;
+    font-size: clamp(2.25rem, 9vw, 3.05rem);
     line-height: 1.08;
+    letter-spacing: -1px;
+  }
+
+  .heroMessage span {
+    display: block;
   }
 
   .inlineLogoRow {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 82px;
+    grid-template-columns: minmax(0, 1fr) 104px;
     align-items: center;
     gap: 12px;
   }
 
   .mobileLogoCircle {
     display: block;
-    width: 82px;
-    height: 82px;
-    border: 4px solid rgba(255, 255, 255, 0.95);
+    width: 104px;
+    height: 104px;
+    margin-top: -20px;
     border-radius: 50%;
+    background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    background-size: cover;
-    box-shadow: 0 10px 24px rgba(10, 55, 25, 0.18);
-  }
-
-  .description {
-    max-width: 100%;
-    margin: 0;
-    font-size: 1rem;
-    line-height: 1.55;
-    text-align: left;
+    border: 5px solid rgba(255, 255, 255, 0.95);
+    box-shadow: 0 12px 28px rgba(10, 55, 25, 0.22);
   }
 
   .illustration {
@@ -213,31 +214,39 @@
   }
 
   .divider {
-    margin: 24px 0 18px;
+    width: 64px;
+    height: 2px;
+    margin: 26px 0 20px;
   }
 
-  .catalog {
-    padding: 44px 0;
-  }
-
-  .productGrid {
-    grid-template-columns: 1fr;
-    gap: 24px;
+  .description {
+    max-width: 100%;
+    margin: 0;
+    color: #1d4c2f;
+    font-size: 1rem;
+    line-height: 1.6;
+    font-weight: 700;
+    text-align: left;
   }
 }
-
 @media (max-width: 420px) {
+  .heroMessage {
+    font-size: clamp(2rem, 8.5vw, 2.45rem);
+    line-height: 1.1;
+  }
+
   .inlineLogoRow {
-    grid-template-columns: minmax(0, 1fr) 68px;
+    grid-template-columns: minmax(0, 1fr) 88px;
     gap: 10px;
   }
 
   .mobileLogoCircle {
-    width: 68px;
-    height: 68px;
+    width: 88px;
+    height: 88px;
+    margin-top: -18px;
   }
 
-  .heroMessage {
-    font-size: clamp(1.85rem, 8.5vw, 2.35rem);
+  .description {
+    font-size: 0.96rem;
   }
 }
