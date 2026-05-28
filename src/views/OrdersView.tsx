@@ -1,8 +1,19 @@
 import styles from './OrdersView.module.css';
+import type { Order, ViewName } from '../types';
 
-const formatMoney = (value) => `S/. ${value.toLocaleString('es-PE')}`;
+type OrdersViewProps = {
+  orders: Order[];
+  onNavigate: (view: ViewName) => void;
+  onTrackOrder: (orderId: string) => void;
+};
 
-export default function OrdersView({ orders, onNavigate, onTrackOrder }) {
+const formatMoney = (value: number) => `S/. ${value.toLocaleString('es-PE')}`;
+
+export default function OrdersView({
+  orders,
+  onNavigate,
+  onTrackOrder,
+}: OrdersViewProps) {
   return (
     <main className={styles.page}>
       <section className={`${styles.content} container`}>
@@ -16,10 +27,10 @@ export default function OrdersView({ orders, onNavigate, onTrackOrder }) {
           <div className={styles.empty}>
             <div className={styles.emptyIcon}>📦</div>
 
-            <h2>Aún no tienes pedidos registrados</h2>
+            <h2>Aun no tienes pedidos registrados</h2>
 
             <p>
-              Cuando realices una compra, tus pedidos aparecerán aquí para que puedas
+              Cuando realices una compra, tus pedidos apareceran aqui para que puedas
               revisar su estado y seguimiento.
             </p>
 

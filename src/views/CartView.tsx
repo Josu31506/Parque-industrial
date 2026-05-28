@@ -1,17 +1,29 @@
-import { products } from '../data/catalog.js';
+import type { CSSProperties } from 'react';
+import { products } from '../data/catalog';
+import type { CartItem, Product, User, ViewName } from '../types';
 import styles from './CartView.module.css';
+
+type CartViewProps = {
+  cartItems: CartItem[];
+  currentUser: User | null;
+  onCheckout: () => void;
+  onDecrease: (productId: string) => void;
+  onIncrease: (productId: string) => void;
+  onNavigate: (view: ViewName) => void;
+  onRemove: (productId: string) => void;
+  onConfirmPurchase: (total: number) => void;
+};
+
+type CartProductItem = CartItem & { product: Product };
 
 const SHIPPING_COST = 10;
 
-const getImageStyle = (image) => {
+const getImageStyle = (image?: string): CSSProperties => {
   if (!image) return {};
-
-  return image.includes('gradient')
-    ? { background: image }
-    : { backgroundImage: `url(${image})` };
+  return image.includes('gradient') ? { background: image } : { backgroundImage: `url(${image})` };
 };
 
-const formatMoney = (value) => `S/. ${value.toLocaleString('es-PE')}`;
+const formatMoney = (value: number) => `S/. ${value.toLocaleString('es-PE')}`;
 
 export default function CartView({
   cartItems,
@@ -22,17 +34,17 @@ export default function CartView({
   onNavigate,
   onRemove,
   onConfirmPurchase,
-}) {
-  const items = cartItems
+}: CartViewProps) {
+  const items: CartProductItem[] = cartItems
     .map((item) => ({
       ...item,
       product: products.find((product) => product.id === item.productId),
     }))
-    .filter((item) => item.product);
+    .filter((item): item is CartProductItem => Boolean(item.product));
 
   const subtotal = items.reduce(
     (sum, item) => sum + item.product.numericPrice * item.quantity,
-    0
+    0,
   );
 
   const shipping = items.length > 0 ? SHIPPING_COST : 0;
@@ -51,19 +63,12 @@ export default function CartView({
           {items.length === 0 ? (
             <div className={styles.empty}>
               <div className={styles.emptyIcon}>🛒</div>
-
-              <h2>Tu carrito está vacío</h2>
-
+              <h2>Tu carrito esta vacio</h2>
               <p>
                 Explora los productos disponibles y agrega tus favoritos para continuar
                 con tu pedido.
               </p>
-
-              <button
-                className="primaryButton"
-                type="button"
-                onClick={() => onNavigate('home')}
-              >
+              <button className="primaryButton" type="button" onClick={() => onNavigate('home')}>
                 Explorar productos
               </button>
             </div>
@@ -84,30 +89,16 @@ export default function CartView({
                   </div>
 
                   <div className={styles.quantity}>
-                    <button
-                      type="button"
-                      onClick={() => onDecrease(product.id)}
-                      aria-label="Disminuir cantidad"
-                    >
+                    <button type="button" onClick={() => onDecrease(product.id)} aria-label="Disminuir cantidad">
                       −
                     </button>
-
                     <span>{quantity}</span>
-
-                    <button
-                      type="button"
-                      onClick={() => onIncrease(product.id)}
-                      aria-label="Aumentar cantidad"
-                    >
+                    <button type="button" onClick={() => onIncrease(product.id)} aria-label="Aumentar cantidad">
                       +
                     </button>
                   </div>
 
-                  <button
-                    className={styles.removeButton}
-                    type="button"
-                    onClick={() => onRemove(product.id)}
-                  >
+                  <button className={styles.removeButton} type="button" onClick={() => onRemove(product.id)}>
                     Eliminar
                   </button>
                 </article>
@@ -123,29 +114,13 @@ export default function CartView({
           </div>
 
           <div className={styles.summaryRows}>
-            <p>
-              <span>Subtotal</span>
-              <strong>{formatMoney(subtotal)}</strong>
-            </p>
-
-            <p>
-              <span>Envío</span>
-              <strong>{formatMoney(shipping)}</strong>
-            </p>
-
-            <p className={styles.total}>
-              <span>Total</span>
-              <strong>{formatMoney(total)}</strong>
-            </p>
+            <p><span>Subtotal</span><strong>{formatMoney(subtotal)}</strong></p>
+            <p><span>Envio</span><strong>{formatMoney(shipping)}</strong></p>
+            <p className={styles.total}><span>Total</span><strong>{formatMoney(total)}</strong></p>
           </div>
 
           {!currentUser ? (
-            <button
-              className="primaryButton"
-              type="button"
-              disabled={!items.length}
-              onClick={onCheckout}
-            >
+            <button className="primaryButton" type="button" disabled={!items.length} onClick={onCheckout}>
               Ir a pagar
             </button>
           ) : (
@@ -159,17 +134,13 @@ export default function CartView({
             </button>
           )}
 
-          <button
-            className="accentButton"
-            type="button"
-            onClick={() => onNavigate('home')}
-          >
+          <button className="accentButton" type="button" onClick={() => onNavigate('home')}>
             Seguir comprando
           </button>
 
           <p className={styles.helpText}>
-            El pago es simulado para fines de prueba. Tu pedido se registrará
-            automáticamente al confirmar.
+            El pago es simulado para fines de prueba. Tu pedido se registrara
+            automaticamente al confirmar.
           </p>
         </aside>
       </section>

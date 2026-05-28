@@ -1,48 +1,52 @@
+import type { FormEvent } from 'react';
 import { useState } from 'react';
-import Footer from './components/Footer/Footer.jsx';
-import Navbar from './components/Navbar/Navbar.jsx';
-import { products } from './data/catalog.js';
-import CartView from './views/CartView.jsx';
-import HomeView from './views/HomeView.jsx';
-import LoginView from './views/LoginView.jsx';
-import OrdersView from './views/OrdersView.jsx';
-import OrderSuccessView from './views/OrderSuccessView.jsx';
-import OrderTrackingView from './views/OrderTrackingView.jsx';
-import ProductDetailView from './views/ProductDetailView.jsx';
-import VerdecitoView from './views/VerdecitoView.jsx';
+import Footer from './components/Footer/Footer';
+import Navbar from './components/Navbar/Navbar';
+import { products } from './data/catalog';
+import type { CartItem, Order, User, ViewName } from './types';
+import CartView from './views/CartView';
+import HomeView from './views/HomeView';
+import LoginView from './views/LoginView';
+import OrdersView from './views/OrdersView';
+import OrderSuccessView from './views/OrderSuccessView';
+import OrderTrackingView from './views/OrderTrackingView';
+import ProductDetailView from './views/ProductDetailView';
+import VerdecitoView from './views/VerdecitoView';
 
-const TEST_USER = {
+type TestUser = User & { password: string };
+
+const TEST_USER: TestUser = {
   email: 'usuario@verdecito.com',
   name: 'Usuario Verdecito',
   password: '123456',
 };
 
 export default function App() {
-  const [view, setView] = useState('home');
-  const [selectedProductId, setSelectedProductId] = useState(null);
-  const [previousView, setPreviousView] = useState('home');
-  const [cartItems, setCartItems] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [view, setView] = useState<ViewName>('home');
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [previousView, setPreviousView] = useState<ViewName>('home');
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [hasPendingCheckout, setHasPendingCheckout] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [cartMessage, setCartMessage] = useState('');
-  const [orders, setOrders] = useState([]);
-  const [lastOrderId, setLastOrderId] = useState(null);
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [lastOrderId, setLastOrderId] = useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
-  const navigate = (nextView) => {
+  const navigate = (nextView: ViewName) => {
     setView(nextView);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const openProduct = (productId, sourceView = view) => {
+  const openProduct = (productId: string, sourceView: ViewName = view) => {
     setSelectedProductId(productId);
     setCartMessage('');
     setPreviousView(sourceView === 'productDetail' ? 'home' : sourceView);
     navigate('productDetail');
   };
 
-  const addToCart = (productId) => {
+  const addToCart = (productId: string) => {
     setCartItems((currentItems) => {
       const existingItem = currentItems.find((item) => item.productId === productId);
 
@@ -59,11 +63,11 @@ export default function App() {
     setCartMessage('Producto agregado al carrito.');
   };
 
-  const removeFromCart = (productId) => {
+  const removeFromCart = (productId: string) => {
     setCartItems((currentItems) => currentItems.filter((item) => item.productId !== productId));
   };
 
-  const increaseQuantity = (productId) => {
+  const increaseQuantity = (productId: string) => {
     setCartItems((currentItems) => currentItems.map((item) => (
       item.productId === productId
         ? { ...item, quantity: item.quantity + 1 }
@@ -71,7 +75,7 @@ export default function App() {
     )));
   };
 
-  const decreaseQuantity = (productId) => {
+  const decreaseQuantity = (productId: string) => {
     setCartItems((currentItems) => currentItems.flatMap((item) => {
       if (item.productId !== productId) return [item];
       const nextQuantity = item.quantity - 1;
@@ -83,7 +87,7 @@ export default function App() {
     setCartItems([]);
   };
 
-  const buyNow = (productId) => {
+  const buyNow = (productId: string) => {
     addToCart(productId);
     setHasPendingCheckout(true);
     navigate(currentUser ? 'cart' : 'login');
@@ -99,7 +103,7 @@ export default function App() {
     navigate('cart');
   };
 
-  const handleLogin = (event) => {
+  const handleLogin = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const email = formData.get('email');
@@ -118,13 +122,13 @@ export default function App() {
     navigate(hasPendingCheckout ? 'cart' : 'home');
   };
 
-  const confirmPurchase = (total) => {
-    const order = {
+  const confirmPurchase = (total: number) => {
+    const order: Order = {
       id: `PED-${Date.now()}`,
       date: new Date().toLocaleDateString('es-PE'),
       items: cartItems,
       total,
-      status: 'En preparacion',
+      status: 'En preparación',
     };
 
     setOrders((currentOrders) => [order, ...currentOrders]);
@@ -135,7 +139,7 @@ export default function App() {
     navigate('orderSuccess');
   };
 
-  const trackOrder = (orderId) => {
+  const trackOrder = (orderId: string) => {
     setSelectedOrderId(orderId);
     navigate('orderTracking');
   };

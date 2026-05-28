@@ -1,13 +1,19 @@
 import styles from './OrderTrackingView.module.css';
+import type { Order, OrderStatus, ViewName } from '../types';
 
-const steps = [
+type OrderTrackingViewProps = {
+  order: Order | undefined;
+  onNavigate: (view: ViewName) => void;
+};
+
+const steps: OrderStatus[] = [
   'Pedido confirmado',
   'En preparación',
   'En camino',
   'Entregado',
 ];
 
-const getCompletedSteps = (status) => {
+const getCompletedSteps = (status: OrderStatus | undefined) => {
   if (status === 'Pedido confirmado') return 0;
   if (status === 'En preparación') return 1;
   if (status === 'En camino') return 2;
@@ -16,7 +22,10 @@ const getCompletedSteps = (status) => {
   return 1;
 };
 
-export default function OrderTrackingView({ order, onNavigate }) {
+export default function OrderTrackingView({
+  order,
+  onNavigate,
+}: OrderTrackingViewProps) {
   const completedStepIndex = getCompletedSteps(order?.status);
 
   return (
@@ -30,7 +39,7 @@ export default function OrderTrackingView({ order, onNavigate }) {
           <p>
             {order
               ? `Tu pedido se encuentra actualmente en estado: ${order.status}.`
-              : 'No pudimos encontrar la información de este pedido.'}
+              : 'No pudimos encontrar la informacion de este pedido.'}
           </p>
         </div>
 

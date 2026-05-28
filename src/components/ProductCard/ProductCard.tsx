@@ -1,4 +1,13 @@
+import type { CSSProperties } from 'react';
+import type { Product } from '../../types';
 import styles from './ProductCard.module.css';
+
+type ProductCardProps = Pick<
+  Product,
+  'badge' | 'image' | 'storeName' | 'title' | 'rating' | 'price' | 'oldPrice'
+> & {
+  onClick?: () => void;
+};
 
 const badgeClassByType = {
   nuevo: styles.newBadge,
@@ -6,7 +15,7 @@ const badgeClassByType = {
   eco: styles.ecoBadge,
 };
 
-const getImageStyle = (image) => {
+const getImageStyle = (image?: string): CSSProperties => {
   if (!image) return {};
   return image.includes('gradient') ? { background: image } : { backgroundImage: `url(${image})` };
 };
@@ -20,7 +29,7 @@ export default function ProductCard({
   price,
   oldPrice,
   onClick,
-}) {
+}: ProductCardProps) {
   const normalizedBadge = badge?.toLowerCase() ?? '';
   const badgeType = normalizedBadge.includes('sostenible')
     ? 'eco'

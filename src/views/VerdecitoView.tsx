@@ -1,11 +1,14 @@
-import ProductCard from '../components/ProductCard/ProductCard.jsx';
-import { products } from '../data/catalog.js';
-import styles from './VerdecitoView.module.css';
-
+import ProductCard from '../components/ProductCard/ProductCard';
 import imagenFondoLocal from '../assets/fondo1.jpeg';
 import logoEcoLocal from '../assets/logo.jpeg';
+import { products } from '../data/catalog';
+import styles from './VerdecitoView.module.css';
 
-export default function VerdecitoView({ onProductSelect }) {
+type VerdecitoViewProps = {
+  onProductSelect: (productId: string) => void;
+};
+
+export default function VerdecitoView({ onProductSelect }: VerdecitoViewProps) {
   const ecoProducts = products.filter((product) => product.type === 'eco');
 
   return (
@@ -31,7 +34,7 @@ export default function VerdecitoView({ onProductSelect }) {
               <h1 className={styles.heroMessage}>
                 <span>Productos sostenibles</span>
                 <span className={styles.inlineLogoRow}>
-                  <span>Hechos con propósito</span>
+                  <span>Hechos con proposito</span>
                   <span
                     className={styles.mobileLogoCircle}
                     style={{ backgroundImage: `url(${logoEcoLocal})` }}
@@ -45,15 +48,12 @@ export default function VerdecitoView({ onProductSelect }) {
 
               <p className={styles.description}>
                 Apoyamos a los productores locales del Parque Industrial de Villa El Salvador,
-                comprometidos con un futuro más verde y responsable.
+                comprometidos con un futuro mas verde y responsable.
               </p>
             </div>
           </div>
 
-          <div
-            className={styles.illustration}
-            aria-label="Logo de la línea sostenible Verdecito"
-          >
+          <div className={styles.illustration} aria-label="Logo de la linea sostenible Verdecito">
             <div
               className={styles.logoCircle}
               style={{
@@ -70,9 +70,7 @@ export default function VerdecitoView({ onProductSelect }) {
       <section className={`${styles.catalog} section`}>
         <div className="container">
           <div className="sectionHeader">
-            <h2>
-              Revisa tus productos sostenibles <span aria-hidden="true"></span>
-            </h2>
+            <h2>Revisa tus productos sostenibles <span aria-hidden="true">🌱</span></h2>
           </div>
 
           <div className={styles.productGrid}>

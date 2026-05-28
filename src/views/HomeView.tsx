@@ -1,13 +1,24 @@
-import CategoryCard from '../components/CategoryCard/CategoryCard.jsx';
-import ProductCard from '../components/ProductCard/ProductCard.jsx';
-import { categories, products } from '../data/catalog.js';
+import type { FormEvent } from 'react';
+import CategoryCard from '../components/CategoryCard/CategoryCard';
+import ProductCard from '../components/ProductCard/ProductCard';
+import { categories, products } from '../data/catalog';
+import type { ViewName } from '../types';
 import styles from './HomeView.module.css';
+
+type HomeViewProps = {
+  onProductSelect: (productId: string) => void;
+  onNavigate: (view: ViewName) => void;
+};
 
 const homeHeroImage =
   'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=1200';
 
-export default function HomeView({ onProductSelect, onNavigate }) {
+export default function HomeView({ onProductSelect, onNavigate }: HomeViewProps) {
   const featuredProducts = products.filter((product) => product.type === 'featured');
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+  };
 
   return (
     <main>
@@ -27,29 +38,20 @@ export default function HomeView({ onProductSelect, onNavigate }) {
         }}
       >
         <div className={`${styles.heroContent} container`}>
-          <p className={styles.eyebrow}>Compra local, diseño directo</p>
-
+          <p className={styles.eyebrow}>Compra local, diseno directo</p>
           <h1>Muebles a medida</h1>
-
           <p className={styles.heroCopy}>
             Directo del Parque Industrial: encuentra talleres, tiendas y fabricantes
             locales con propuestas listas para transformar tus espacios.
           </p>
 
-          <form
-            className={styles.heroSearch}
-            role="search"
-            onSubmit={(event) => event.preventDefault()}
-          >
+          <form className={styles.heroSearch} role="search" onSubmit={handleSubmit}>
             <input
               type="search"
               placeholder="Busca salas, comedores, dormitorios..."
               aria-label="Buscar muebles"
             />
-
-            <button className="accentButton" type="submit">
-              Buscar
-            </button>
+            <button className="accentButton" type="submit">Buscar</button>
           </form>
         </div>
       </section>
@@ -57,10 +59,8 @@ export default function HomeView({ onProductSelect, onNavigate }) {
       <section className="section" id="categorias">
         <div className="container">
           <div className="sectionHeader">
-            <h2>Categorías más populares</h2>
-            <a className="sectionLink" href="#todas">
-              Ver todas ›
-            </a>
+            <h2>Categorias mas populares</h2>
+            <a className="sectionLink" href="#todas">Ver todas ›</a>
           </div>
 
           <div className={styles.categoryGrid}>
@@ -75,7 +75,6 @@ export default function HomeView({ onProductSelect, onNavigate }) {
         <div className="container">
           <div className="sectionHeader">
             <h2>Productos destacados</h2>
-
             <button
               className="sectionLink"
               type="button"
@@ -101,26 +100,19 @@ export default function HomeView({ onProductSelect, onNavigate }) {
         <div className={`${styles.newsletterLayout} container`}>
           <div>
             <h2>Conectando talento local</h2>
-
             <p>
               Recibe novedades, ofertas de talleres y lanzamientos de muebles hechos
               por emprendedores del Parque Industrial.
             </p>
           </div>
 
-          <form
-            className={styles.newsletterForm}
-            onSubmit={(event) => event.preventDefault()}
-          >
+          <form className={styles.newsletterForm} onSubmit={handleSubmit}>
             <input
               type="email"
               placeholder="tu.correo@ejemplo.com"
-              aria-label="Correo electrónico"
+              aria-label="Correo electronico"
             />
-
-            <button className="accentButton" type="submit">
-              Suscribirme
-            </button>
+            <button className="accentButton" type="submit">Suscribirme</button>
           </form>
         </div>
       </section>
