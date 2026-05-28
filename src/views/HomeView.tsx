@@ -72,7 +72,7 @@ export default function HomeView({
     {
       id: 'quote',
       eyebrow: 'Cotizaciones personalizadas',
-      title: 'Tu idea, hecha mueble',
+      title: 'Diseña el mueble que necesitas',
       description:
         'Solicita muebles a medida, modifica dimensiones, elige colores o envía una referencia para recibir una propuesta personalizada.',
       backgroundImage: quoteHeroImage,
