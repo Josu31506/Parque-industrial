@@ -6,6 +6,8 @@ import type { ViewName } from '../types';
 import styles from './HomeView.module.css';
 
 type HomeViewProps = {
+  onCategorySelect: (categoryName: string) => void;
+  onOpenCatalog: () => void;
   onProductSelect: (productId: string) => void;
   onNavigate: (view: ViewName) => void;
 };
@@ -13,9 +15,12 @@ type HomeViewProps = {
 const homeHeroImage =
   'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=1200';
 
-export default function HomeView({ onProductSelect, onNavigate }: HomeViewProps) {
-  const featuredProducts = products.filter((product) => product.type === 'featured');
-
+export default function HomeView({
+  onCategorySelect,
+  onOpenCatalog,
+  onProductSelect,
+  onNavigate,
+}: HomeViewProps) {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
   };
@@ -38,7 +43,7 @@ export default function HomeView({ onProductSelect, onNavigate }: HomeViewProps)
         }}
       >
         <div className={`${styles.heroContent} container`}>
-          <p className={styles.eyebrow}>Compra local, diseno directo</p>
+          <p className={styles.eyebrow}>Compra local, diseño directo</p>
           <h1>Muebles a medida</h1>
           <p className={styles.heroCopy}>
             Directo del Parque Industrial: encuentra talleres, tiendas y fabricantes
@@ -53,6 +58,15 @@ export default function HomeView({ onProductSelect, onNavigate }: HomeViewProps)
             />
             <button className="accentButton" type="submit">Buscar</button>
           </form>
+
+          <div className={styles.heroActions}>
+            <button className="primaryButton" type="button" onClick={onOpenCatalog}>
+              Ver catalogo
+            </button>
+            <button className="accentButton" type="button" onClick={() => onNavigate('verdecito')}>
+              Explorar Verdecito
+            </button>
+          </div>
         </div>
       </section>
 
@@ -60,12 +74,18 @@ export default function HomeView({ onProductSelect, onNavigate }: HomeViewProps)
         <div className="container">
           <div className="sectionHeader">
             <h2>Categorias mas populares</h2>
-            <a className="sectionLink" href="#todas">Ver todas ›</a>
+            <button className="sectionLink" type="button" onClick={onOpenCatalog}>
+              Ver todas ›
+            </button>
           </div>
 
           <div className={styles.categoryGrid}>
             {categories.map((category) => (
-              <CategoryCard key={category.name} {...category} />
+              <CategoryCard
+                key={category.name}
+                {...category}
+                onClick={() => onCategorySelect(category.name)}
+              />
             ))}
           </div>
         </div>
@@ -74,18 +94,14 @@ export default function HomeView({ onProductSelect, onNavigate }: HomeViewProps)
       <section className={`${styles.productsSection} section`} id="destacados">
         <div className="container">
           <div className="sectionHeader">
-            <h2>Productos destacados</h2>
-            <button
-              className="sectionLink"
-              type="button"
-              onClick={() => onNavigate('verdecito')}
-            >
-              Ver productos sostenibles ›
+            <h2>Explora nuestros productos</h2>
+            <button className="sectionLink" type="button" onClick={onOpenCatalog}>
+              Ver catalogo completo ›
             </button>
           </div>
 
           <div className={styles.productGrid}>
-            {featuredProducts.map((product) => (
+            {products.map((product) => (
               <ProductCard
                 key={product.id}
                 {...product}

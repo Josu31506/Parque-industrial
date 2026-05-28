@@ -1,12 +1,20 @@
+import type { ViewName } from '../../types';
 import styles from './Footer.module.css';
 
-export default function Footer() {
+type FooterProps = {
+  onNavigate: (view: ViewName) => void;
+};
+
+export default function Footer({ onNavigate }: FooterProps) {
   return (
     <footer className={styles.footer}>
       <div className={`${styles.layout} container`}>
         <div className={styles.links}>
           <a href="#politicas">Politicas de privacidad</a>
           <a href="#terminos">Terminos y condiciones</a>
+          <button type="button" onClick={() => onNavigate('support')}>
+            Atencion al cliente
+          </button>
         </div>
 
         <div className={styles.contact}>

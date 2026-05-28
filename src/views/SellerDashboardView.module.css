@@ -1,0 +1,208 @@
+.page {
+  min-height: calc(100vh - 180px);
+  padding: 72px 0;
+  background: radial-gradient(circle at top left, rgba(143, 184, 104, 0.16), transparent 34%), #f8faf6;
+}
+
+.content {
+  display: grid;
+  gap: 24px;
+}
+
+.heading h1 {
+  margin: 0;
+  color: #0d2f5f;
+  font-size: clamp(2.2rem, 4vw, 3.4rem);
+}
+
+.heading p,
+.card p {
+  color: #667085;
+}
+
+.kicker {
+  color: #e69562;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.toolbar,
+.card,
+.empty,
+.productCard {
+  padding: 22px;
+  border: 1px solid #dfe5dd;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(15, 47, 95, 0.07);
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 340px) 1fr;
+  gap: 18px;
+  align-items: end;
+}
+
+.toolbar label {
+  display: grid;
+  gap: 8px;
+}
+
+.toolbar label span {
+  color: #0d2f5f;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.toolbar select,
+.formGrid input {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tabs button {
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid #dfe5dd;
+  border-radius: 999px;
+  color: #0d2f5f;
+  background: #f8faf6;
+  font-weight: 900;
+}
+
+.tabs .active {
+  color: #fff;
+  background: #0d2f5f;
+}
+
+.list {
+  display: grid;
+  gap: 18px;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.card h2,
+.card p,
+.productCard h2,
+.productCard p {
+  margin: 0;
+}
+
+.card h2,
+.productCard h2,
+.items strong,
+.moneyGrid strong,
+.groupFacts strong {
+  color: #0d2f5f;
+}
+
+.status {
+  align-self: start;
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: #2e7d32;
+  background: #eef7e8;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.items,
+.moneyGrid,
+.groupFacts {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.items p {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid #eef0ec;
+}
+
+.moneyGrid,
+.groupFacts {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.moneyGrid p,
+.groupFacts p {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.moneyGrid span,
+.groupFacts span,
+.productCard span {
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) auto auto;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+@media (max-width: 1040px) {
+  .toolbar,
+  .formGrid,
+  .moneyGrid,
+  .groupFacts,
+  .productGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .page {
+    padding: 48px 0;
+  }
+
+  .cardHeader,
+  .actions,
+  .tabs {
+    flex-direction: column;
+  }
+
+  .formGrid button,
+  .actions button,
+  .tabs button {
+    width: 100%;
+  }
+}

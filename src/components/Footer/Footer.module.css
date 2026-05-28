@@ -20,7 +20,17 @@
   flex-wrap: wrap;
 }
 
-.links a:hover {
+.links button {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.links a:hover,
+.links button:hover {
   color: #fff;
 }
 

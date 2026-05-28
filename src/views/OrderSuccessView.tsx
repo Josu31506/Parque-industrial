@@ -37,8 +37,30 @@ export default function OrderSuccessView({
               <span>Estado</span>
               <strong>{order.status}</strong>
             </p>
+            {order.paidAmount !== undefined && (
+              <p>
+                <span>Monto pagado</span>
+                <strong>{formatMoney(order.paidAmount)}</strong>
+              </p>
+            )}
+            {order.remainingAmount !== undefined && order.remainingAmount > 0 && (
+              <p>
+                <span>Saldo pendiente</span>
+                <strong>{formatMoney(order.remainingAmount)}</strong>
+              </p>
+            )}
+            {order.fundsStatus && (
+              <p>
+                <span>Fondos</span>
+                <strong>{order.fundsStatus}</strong>
+              </p>
+            )}
           </div>
         )}
+
+        <p>
+          El pago sera retenido por la plataforma hasta la entrega conforme del producto.
+        </p>
 
         <div className={styles.actions}>
           <button

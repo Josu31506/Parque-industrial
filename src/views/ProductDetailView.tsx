@@ -1,29 +1,48 @@
 import type { CSSProperties } from 'react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getProducerById } from '../data/catalog';
+import { reviews } from '../data/reviews';
 import type { Product } from '../types';
 import styles from './ProductDetailView.module.css';
+
+type DetailTab = 'description' | 'technical' | 'producer' | 'reviews';
 
 type ProductDetailViewProps = {
   product: Product | undefined;
   cartMessage?: string;
   onAddToCart: (productId: string) => void;
   onBack: () => void;
+  onProducerSelect: (producerId: string) => void;
 };
+
+const reviewPageSize = 3;
 
 const getImageStyle = (image?: string): CSSProperties => {
   if (!image) return {};
   return image.includes('gradient') ? { background: image } : { backgroundImage: `url(${image})` };
 };
 
+const getValue = (value: string | undefined) => value ?? 'No especificado';
+
 export default function ProductDetailView({
   cartMessage,
   onAddToCart,
   onBack,
+  onProducerSelect,
   product,
 }: ProductDetailViewProps) {
-  const [activeTab, setActiveTab] = useState<'description' | 'producer'>('description');
+  const [activeTab, setActiveTab] = useState<DetailTab>('description');
+  const [reviewPage, setReviewPage] = useState(0);
   const producer = getProducerById(product?.producerId);
+
+  useEffect(() => {
+    setActiveTab('description');
+    setReviewPage(0);
+  }, [product?.id]);
+
+  const productReviews = useMemo(() => (
+    reviews.filter((review) => review.productId === product?.id)
+  ), [product?.id]);
 
   if (!product) {
     return (
@@ -37,6 +56,15 @@ export default function ProductDetailView({
   }
 
   const isEco = product.type === 'eco';
+  const averageRating = productReviews.length > 0
+    ? productReviews.reduce((total, review) => total + review.rating, 0) / productReviews.length
+    : product.rating;
+  const totalReviewPages = Math.max(1, Math.ceil(productReviews.length / reviewPageSize));
+  const visibleReviews = productReviews.slice(
+    reviewPage * reviewPageSize,
+    reviewPage * reviewPageSize + reviewPageSize,
+  );
+  const details = product.technicalDetails;
 
   return (
     <main className={`${styles.page} ${isEco ? styles.ecoPage : ''}`}>
@@ -52,7 +80,7 @@ export default function ProductDetailView({
 
           <p className={styles.storeName}>{product.storeName}</p>
           <h1>{product.title}</h1>
-          <p className={styles.rating}>★★★★★ <span>{product.rating}</span></p>
+          <p className={styles.rating}>★★★★★ <span>{averageRating?.toFixed(1)}</span></p>
 
           <div className={styles.priceRow}>
             <strong>{product.price}</strong>
@@ -69,22 +97,118 @@ export default function ProductDetailView({
             </button>
 
             <button
+              className={activeTab === 'technical' ? styles.active : undefined}
+              type="button"
+              onClick={() => setActiveTab('technical')}
+            >
+              Ficha tecnica
+            </button>
+
+            <button
               className={activeTab === 'producer' ? styles.active : undefined}
               type="button"
               onClick={() => setActiveTab('producer')}
             >
               Productora
             </button>
+
+            <button
+              className={activeTab === 'reviews' ? styles.active : undefined}
+              type="button"
+              onClick={() => setActiveTab('reviews')}
+            >
+              Reseñas
+            </button>
           </div>
 
           <div className={styles.tabPanel}>
             {activeTab === 'description' && <p>{product.description}</p>}
 
+            {activeTab === 'technical' && (
+              <div className={styles.technicalGrid}>
+                <div><span>Dimensiones</span><strong>{getValue(details?.dimensions)}</strong></div>
+                <div><span>Materiales</span><strong>{getValue(details?.materials)}</strong></div>
+                <div><span>Colores</span><strong>{details?.colors?.join(', ') ?? 'No especificado'}</strong></div>
+                <div><span>Acabado</span><strong>{getValue(details?.finish)}</strong></div>
+                <div><span>Disponibilidad</span><strong>{getValue(details?.availability)}</strong></div>
+                <div><span>Entrega estimada</span><strong>{getValue(details?.estimatedDelivery)}</strong></div>
+                <div>
+                  <span>Personalizable</span>
+                  <strong>
+                    {details?.customizable === undefined
+                      ? 'No especificado'
+                      : details.customizable
+                        ? 'Si'
+                        : 'No'}
+                  </strong>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'producer' && (
-              <div>
-                <h2>{producer?.name}</h2>
-                <p>{producer?.description}</p>
-                <small>{producer?.type} · {producer?.location}</small>
+              <div className={styles.producerPanel}>
+                <h2>{producer?.name ?? product.storeName}</h2>
+                <p>{producer?.description ?? 'Informacion de productora no especificada.'}</p>
+                {producer && <small>{producer.type} · {producer.location}</small>}
+                {producer && (
+                  <button
+                    className="primaryButton"
+                    type="button"
+                    onClick={() => onProducerSelect(producer.id)}
+                  >
+                    Ver perfil de productora
+                  </button>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'reviews' && (
+              <div className={styles.reviewsPanel}>
+                <div className={styles.reviewSummary}>
+                  <strong>{averageRating?.toFixed(1) ?? 'Sin calificacion'}</strong>
+                  <span>
+                    {productReviews.length === 1
+                      ? '1 reseña registrada'
+                      : `${productReviews.length} reseñas registradas`}
+                  </span>
+                </div>
+
+                {visibleReviews.length > 0 ? (
+                  <div className={styles.reviewList}>
+                    {visibleReviews.map((review) => (
+                      <article className={styles.reviewItem} key={review.id}>
+                        <div>
+                          <strong>{review.userName}</strong>
+                          <span>{review.date}</span>
+                        </div>
+                        <p className={styles.rating}>★★★★★ <span>{review.rating}</span></p>
+                        <p>{review.comment}</p>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p>Este producto aun no tiene reseñas.</p>
+                )}
+
+                {productReviews.length > reviewPageSize && (
+                  <div className={styles.reviewActions}>
+                    <button
+                      type="button"
+                      disabled={reviewPage === 0}
+                      onClick={() => setReviewPage((page) => Math.max(0, page - 1))}
+                    >
+                      Anterior
+                    </button>
+                    <span>Pagina {reviewPage + 1} de {totalReviewPages}</span>
+                    <button
+                      type="button"
+                      disabled={reviewPage + 1 >= totalReviewPages}
+                      onClick={() => setReviewPage((page) => Math.min(totalReviewPages - 1, page + 1))}
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

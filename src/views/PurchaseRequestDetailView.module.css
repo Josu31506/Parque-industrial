@@ -1,0 +1,150 @@
+.page {
+  min-height: calc(100vh - 180px);
+  padding: 72px 0;
+  background: radial-gradient(circle at top left, rgba(143, 184, 104, 0.16), transparent 34%), #f8faf6;
+}
+
+.content {
+  display: grid;
+  gap: 22px;
+  max-width: 1050px;
+}
+
+.heading h1 {
+  margin: 0;
+  color: #0d2f5f;
+  font-size: clamp(2.2rem, 4vw, 3.4rem);
+}
+
+.heading p,
+.groupCard p,
+.paymentBox p {
+  color: #667085;
+}
+
+.kicker {
+  color: #e69562;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.summary,
+.groupCard,
+.paymentBox,
+.empty {
+  padding: 24px;
+  border: 1px solid #dfe5dd;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(15, 47, 95, 0.07);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.summary p,
+.groupFacts p,
+.items p {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.summary span,
+.groupFacts span {
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.summary strong,
+.groupFacts strong,
+.items strong,
+.groupCard h2,
+.paymentBox h2 {
+  color: #0d2f5f;
+}
+
+.groups {
+  display: grid;
+  gap: 16px;
+}
+
+.groupHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.groupHeader h2,
+.groupHeader p,
+.paymentBox h2,
+.paymentBox p {
+  margin: 0;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: #2e7d32;
+  background: #eef7e8;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.items,
+.groupFacts {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.items p {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 10px 0;
+  border-top: 1px solid #eef0ec;
+}
+
+.groupFacts {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.paymentBox {
+  display: grid;
+  gap: 14px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 48px 0;
+  }
+
+  .summary,
+  .groupFacts {
+    grid-template-columns: 1fr;
+  }
+
+  .groupHeader,
+  .actions {
+    flex-direction: column;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}

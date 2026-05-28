@@ -18,7 +18,7 @@ export default function OrdersView({
     <main className={styles.page}>
       <section className={`${styles.content} container`}>
         <div className={styles.heading}>
-          <span className={styles.kicker}>Pedidos</span>
+          <span className={styles.kicker}></span>
           <h1>Mis pedidos</h1>
           <p>Consulta el estado de tus pedidos y revisa su seguimiento.</p>
         </div>
@@ -52,12 +52,17 @@ export default function OrdersView({
                   <div>
                     <h2>Pedido {index + 1}</h2>
                     <p>Pedido realizado el {order.date}</p>
+                    {order.estimatedDeliveryDate && (
+                      <p>Entrega estimada: {order.estimatedDeliveryDate}</p>
+                    )}
+                    <p>Fondos: {order.fundsStatus ?? 'HELD'}</p>
                   </div>
                 </div>
 
                 <div className={styles.amountBox}>
                   <span>Total</span>
                   <strong>{formatMoney(order.total)}</strong>
+                  {order.paidAmount !== undefined && <small>Pagado: {formatMoney(order.paidAmount)}</small>}
                 </div>
 
                 <span className={styles.statusBadge}>{order.status}</span>

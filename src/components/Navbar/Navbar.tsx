@@ -1,6 +1,6 @@
-import type { FormEvent } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 import logo2 from '../../assets/logo2.jpeg';
-import type { User, ViewName } from '../../types';
+import type { Role, User, ViewName } from '../../types';
 import styles from './Navbar.module.css';
 
 type NavItem =
@@ -10,24 +10,50 @@ type NavItem =
 type NavbarProps = {
   activeView?: ViewName;
   cartCount?: number;
+  currentRole: Role;
   currentUser: User | null;
+  notificationCount?: number;
   onNavigate: (view: ViewName) => void;
+  onRoleChange: (role: Role) => void;
 };
 
-const navItems: NavItem[] = [
+const customerNav: NavItem[] = [
   { label: 'Inicio', view: 'home' },
-  { label: 'Categorias', anchor: 'categorias' },
-  { label: 'Destacados', anchor: 'destacados' },
+  { label: 'Catalogo', view: 'catalog' },
   { label: 'Verdecito', view: 'verdecito' },
   { label: 'Carrito', view: 'cart' },
   { label: 'Pedidos', view: 'orders' },
+  { label: 'Solicitudes', view: 'purchaseRequests' },
+  { label: 'Notificaciones', view: 'notifications' },
 ];
+
+const sellerNav: NavItem[] = [
+  { label: 'Inicio', view: 'home' },
+  { label: 'Catalogo', view: 'catalog' },
+  { label: 'Panel productor', view: 'sellerDashboard' },
+  { label: 'Notificaciones', view: 'notifications' },
+];
+
+const adminNav: NavItem[] = [
+  { label: 'Inicio', view: 'home' },
+  { label: 'Reclamos', view: 'claims' },
+  { label: 'Notificaciones', view: 'notifications' },
+];
+
+const getNavItems = (role: Role) => {
+  if (role === 'seller') return sellerNav;
+  if (role === 'admin') return adminNav;
+  return customerNav;
+};
 
 export default function Navbar({
   activeView = 'home',
   cartCount = 0,
+  currentRole,
   currentUser,
+  notificationCount = 0,
   onNavigate,
+  onRoleChange,
 }: NavbarProps) {
   const handleNavClick = (item: NavItem) => {
     if (item.view) {
@@ -50,6 +76,10 @@ export default function Navbar({
     event.preventDefault();
   };
 
+  const handleRoleChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    onRoleChange(event.target.value as Role);
+  };
+
   return (
     <header className={styles.header}>
       <nav className={`${styles.navbar} container`} aria-label="Navegacion principal">
@@ -63,7 +93,7 @@ export default function Navbar({
         </button>
 
         <ul className={styles.menu}>
-          {navItems.map((item) => (
+          {getNavItems(currentRole).map((item) => (
             <li key={item.label}>
               <button
                 className={item.view === activeView ? styles.active : undefined}
@@ -72,15 +102,23 @@ export default function Navbar({
               >
                 {item.label}
                 {item.view === 'cart' && cartCount > 0 ? <span>{cartCount}</span> : null}
+                {item.view === 'notifications' && notificationCount > 0 ? <span>{notificationCount}</span> : null}
               </button>
             </li>
           ))}
         </ul>
 
         <div className={styles.actions}>
-          <form className={styles.search} role="search" onSubmit={handleSearchSubmit}>
-            <input type="search" placeholder="Buscar" aria-label="Buscar productos" />
-          </form>
+          
+
+          <label className={styles.roleSelect}>
+            <span>Rol</span>
+            <select value={currentRole} onChange={handleRoleChange}>
+              <option value="customer">Cliente</option>
+              <option value="seller">Productor</option>
+              <option value="admin">Admin/Asesor</option>
+            </select>
+          </label>
 
           <button
             className="primaryButton"

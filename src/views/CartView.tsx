@@ -1,22 +1,31 @@
 import type { CSSProperties } from 'react';
 import { products } from '../data/catalog';
-import type { CartItem, Product, User, ViewName } from '../types';
+import type { AvailabilityType, CartItem, Product, User, ViewName } from '../types';
 import styles from './CartView.module.css';
 
 type CartViewProps = {
   cartItems: CartItem[];
   currentUser: User | null;
+  cartNotice?: string;
   onCheckout: () => void;
   onDecrease: (productId: string) => void;
   onIncrease: (productId: string) => void;
   onNavigate: (view: ViewName) => void;
   onRemove: (productId: string) => void;
-  onConfirmPurchase: (total: number) => void;
+  onPayNow: (total: number) => void;
+  onRequestPurchase: (total: number) => void;
+  onRequestQuote: () => void;
 };
 
 type CartProductItem = CartItem & { product: Product };
 
 const SHIPPING_COST = 10;
+
+const availabilityLabels: Record<AvailabilityType, string> = {
+  IN_STOCK: 'Stock disponible',
+  MADE_TO_ORDER: 'Requiere confirmacion',
+  CUSTOM_QUOTE: 'Requiere cotizacion',
+};
 
 const getImageStyle = (image?: string): CSSProperties => {
   if (!image) return {};
@@ -28,12 +37,15 @@ const formatMoney = (value: number) => `S/. ${value.toLocaleString('es-PE')}`;
 export default function CartView({
   cartItems,
   currentUser,
+  cartNotice,
   onCheckout,
   onDecrease,
   onIncrease,
   onNavigate,
   onRemove,
-  onConfirmPurchase,
+  onPayNow,
+  onRequestPurchase,
+  onRequestQuote,
 }: CartViewProps) {
   const items: CartProductItem[] = cartItems
     .map((item) => ({
@@ -49,13 +61,45 @@ export default function CartView({
 
   const shipping = items.length > 0 ? SHIPPING_COST : 0;
   const total = subtotal + shipping;
+  const hasMadeToOrder = items.some((item) => item.product.availabilityType === 'MADE_TO_ORDER');
+  const hasCustomQuote = items.some((item) => item.product.availabilityType === 'CUSTOM_QUOTE');
+  const canPayNow = items.length > 0 && !hasMadeToOrder && !hasCustomQuote;
+
+  const handlePrimaryAction = () => {
+    if (!items.length) return;
+
+    if (hasCustomQuote) {
+      onRequestQuote();
+      return;
+    }
+
+    if (!currentUser) {
+      onCheckout();
+      return;
+    }
+
+    if (hasMadeToOrder) {
+      onRequestPurchase(total);
+      return;
+    }
+
+    onPayNow(total);
+  };
+
+  const primaryLabel = hasCustomQuote
+    ? 'Solicitar cotizacion'
+    : hasMadeToOrder
+      ? 'Solicitar compra'
+      : currentUser
+        ? 'Pagar ahora'
+        : 'Ir a pagar';
 
   return (
     <main className={styles.page}>
       <section className={`${styles.layout} container`}>
         <div className={styles.cartContent}>
           <div className={styles.heading}>
-            <span className={styles.kicker}>Carrito</span>
+            <span className={styles.kicker}></span>
             <h1>Carrito de compras</h1>
             <p>Revisa tus productos seleccionados antes de continuar con el pedido.</p>
           </div>
@@ -86,6 +130,14 @@ export default function CartView({
                     <span className={styles.storeName}>{product.storeName}</span>
                     <h2>{product.title}</h2>
                     <strong>{product.price}</strong>
+                    <span className={`${styles.availability} ${styles[product.availabilityType]}`}>
+                      {availabilityLabels[product.availabilityType]}
+                    </span>
+                    {product.availabilityType === 'CUSTOM_QUOTE' && (
+                      <p className={styles.itemNote}>
+                        Este producto requiere cotizacion personalizada.
+                      </p>
+                    )}
                   </div>
 
                   <div className={styles.quantity}>
@@ -119,28 +171,42 @@ export default function CartView({
             <p className={styles.total}><span>Total</span><strong>{formatMoney(total)}</strong></p>
           </div>
 
-          {!currentUser ? (
-            <button className="primaryButton" type="button" disabled={!items.length} onClick={onCheckout}>
-              Ir a pagar
-            </button>
-          ) : (
-            <button
-              className="primaryButton"
-              type="button"
-              disabled={!items.length}
-              onClick={() => onConfirmPurchase(total)}
-            >
-              Confirmar pedido
-            </button>
+          {cartNotice && <p className={styles.notice}>{cartNotice}</p>}
+
+          {hasCustomQuote && (
+            <p className={styles.notice}>
+              El flujo de cotizacion sera gestionado por un asesor en una siguiente fase.
+            </p>
           )}
+
+          {hasMadeToOrder && !hasCustomQuote && (
+            <p className={styles.notice}>
+              Esta compra requiere confirmacion del productor antes de pagar.
+            </p>
+          )}
+
+          {canPayNow && (
+            <p className={styles.notice}>
+              El pago sera retenido por la plataforma hasta la entrega conforme del producto.
+            </p>
+          )}
+
+          <button
+            className="primaryButton"
+            type="button"
+            disabled={!items.length}
+            onClick={handlePrimaryAction}
+          >
+            {primaryLabel}
+          </button>
 
           <button className="accentButton" type="button" onClick={() => onNavigate('home')}>
             Seguir comprando
           </button>
 
           <p className={styles.helpText}>
-            El pago es simulado para fines de prueba. Tu pedido se registrara
-            automaticamente al confirmar.
+            El pago es simulado para fines de prueba. Las solicitudes y ventas se guardan
+            temporalmente en el estado de la aplicacion.
           </p>
         </aside>
       </section>

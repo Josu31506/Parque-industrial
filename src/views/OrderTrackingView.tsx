@@ -1,8 +1,12 @@
+import type { FormEvent } from 'react';
+import { useState } from 'react';
+import type { Order, OrderStatus, Sale, ViewName } from '../types';
 import styles from './OrderTrackingView.module.css';
-import type { Order, OrderStatus, ViewName } from '../types';
 
 type OrderTrackingViewProps = {
   order: Order | undefined;
+  sales: Sale[];
+  onCreateClaim: (orderId: string, reason: string, description: string) => void;
   onNavigate: (view: ViewName) => void;
 };
 
@@ -22,11 +26,35 @@ const getCompletedSteps = (status: OrderStatus | undefined) => {
   return 1;
 };
 
+const producerStatusLabel = (status: Sale['status']) => {
+  if (status === 'READY_FOR_DISPATCH') return 'Listo para despacho';
+  if (status === 'DISPATCHED') return 'Despachado';
+  if (status === 'DELIVERED') return 'Entregado';
+  return 'En preparacion';
+};
+
 export default function OrderTrackingView({
   order,
+  sales,
+  onCreateClaim,
   onNavigate,
 }: OrderTrackingViewProps) {
+  const [showClaimForm, setShowClaimForm] = useState(false);
   const completedStepIndex = getCompletedSteps(order?.status);
+  const orderSales = order ? sales.filter((sale) => sale.orderId === order.id) : [];
+  const readyProducers = orderSales.filter((sale) => sale.status === 'READY_FOR_DISPATCH' || sale.status === 'DISPATCHED' || sale.status === 'DELIVERED').length;
+
+  const handleClaimSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!order) return;
+
+    const formData = new FormData(event.currentTarget);
+    const reason = String(formData.get('reason') ?? 'Otro');
+    const description = String(formData.get('description') ?? '');
+    onCreateClaim(order.id, reason, description);
+    setShowClaimForm(false);
+    event.currentTarget.reset();
+  };
 
   return (
     <main className={styles.page}>
@@ -44,56 +72,97 @@ export default function OrderTrackingView({
         </div>
 
         {order ? (
-          <div className={styles.card}>
-            <div className={styles.summary}>
-              <div>
-                <span className={styles.label}>Pedido</span>
-                <strong>Pedido en proceso</strong>
+          <>
+            <div className={styles.card}>
+              <div className={styles.summary}>
+                <div>
+                  <span className={styles.label}>Pedido</span>
+                  <strong>{order.id}</strong>
+                </div>
+
+                <div>
+                  <span className={styles.label}>Entrega estimada</span>
+                  <strong>{order.estimatedDeliveryDate ?? 'Pendiente'}</strong>
+                </div>
+
+                <div>
+                  <span className={styles.label}>Productores listos</span>
+                  <strong>{readyProducers} de {orderSales.length || order.producerGroups?.length || 0}</strong>
+                </div>
+
+                <div>
+                  <span className={styles.label}>Fondos</span>
+                  <strong className={styles.status}>{order.fundsStatus ?? 'HELD'}</strong>
+                </div>
               </div>
 
-              <div>
-                <span className={styles.label}>Fecha</span>
-                <strong>{order.date}</strong>
-              </div>
+              <div className={styles.timeline}>
+                {steps.map((step, index) => {
+                  const isDone = index <= completedStepIndex;
+                  const isCurrent = index === completedStepIndex;
 
-              <div>
-                <span className={styles.label}>Estado actual</span>
-                <strong className={styles.status}>{order.status}</strong>
+                  return (
+                    <article
+                      className={`${styles.step} ${isDone ? styles.done : ''} ${
+                        isCurrent ? styles.current : ''
+                      }`}
+                      key={step}
+                    >
+                      <div className={styles.marker}>
+                        {isDone ? '✓' : index + 1}
+                      </div>
+
+                      <div className={styles.stepContent}>
+                        <h2>{step}</h2>
+
+                        <p>
+                          {isCurrent
+                            ? 'Este es el estado actual de tu pedido.'
+                            : isDone
+                              ? 'Etapa completada.'
+                              : 'Pendiente.'}
+                        </p>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             </div>
 
-            <div className={styles.timeline}>
-              {steps.map((step, index) => {
-                const isDone = index <= completedStepIndex;
-                const isCurrent = index === completedStepIndex;
-
-                return (
-                  <article
-                    className={`${styles.step} ${isDone ? styles.done : ''} ${
-                      isCurrent ? styles.current : ''
-                    }`}
-                    key={step}
-                  >
-                    <div className={styles.marker}>
-                      {isDone ? '✓' : index + 1}
-                    </div>
-
-                    <div className={styles.stepContent}>
-                      <h2>{step}</h2>
-
-                      <p>
-                        {isCurrent
-                          ? 'Este es el estado actual de tu pedido.'
-                          : isDone
-                            ? 'Etapa completada.'
-                            : 'Pendiente.'}
-                      </p>
-                    </div>
-                  </article>
-                );
-              })}
+            <div className={styles.producerGrid}>
+              {(orderSales.length > 0 ? orderSales : order.producerGroups ?? []).map((group) => (
+                <article className={styles.producerCard} key={group.producerId}>
+                  <div className={styles.producerHeader}>
+                    <h2>{group.producerName}</h2>
+                    <span>{'status' in group ? producerStatusLabel(group.status) : 'En preparacion'}</span>
+                  </div>
+                  <div className={styles.productList}>
+                    {group.items.map((item) => (
+                      <p key={item.productId}><span>{item.title}</span><strong>x{item.quantity}</strong></p>
+                    ))}
+                  </div>
+                  <p><strong>Fecha comprometida:</strong> {group.readyDate ?? 'Pendiente'}</p>
+                  <p><strong>Observacion:</strong> {group.observation ?? 'Sin observacion'}</p>
+                </article>
+              ))}
             </div>
-          </div>
+
+            {showClaimForm && (
+              <form className={styles.claimForm} onSubmit={handleClaimSubmit}>
+                <h2>Reportar problema</h2>
+                <select name="reason" required>
+                  <option value="Producto danado">Producto dañado</option>
+                  <option value="Producto no corresponde">Producto no corresponde</option>
+                  <option value="Medidas incorrectas">Medidas incorrectas</option>
+                  <option value="Color/acabado incorrecto">Color/acabado incorrecto</option>
+                  <option value="No llego el producto">No llego el producto</option>
+                  <option value="Otro">Otro</option>
+                </select>
+                <textarea name="description" placeholder="Describe brevemente el problema" required />
+                <button className="primaryButton" type="submit">Registrar reclamo</button>
+              </form>
+            )}
+          </>
         ) : (
           <div className={styles.empty}>
             <p>Pedido no encontrado.</p>
@@ -108,6 +177,11 @@ export default function OrderTrackingView({
           >
             Volver a pedidos
           </button>
+          {order && (
+            <button className="accentButton" type="button" onClick={() => setShowClaimForm((current) => !current)}>
+              Reportar problema
+            </button>
+          )}
         </div>
       </section>
     </main>

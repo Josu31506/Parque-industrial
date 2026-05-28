@@ -149,6 +149,37 @@
   font-size: 1.05rem;
 }
 
+.availability {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.IN_STOCK {
+  color: #2e7d32;
+  background: #eef7e8;
+}
+
+.MADE_TO_ORDER {
+  color: #8a4a13;
+  background: #fff1e7;
+}
+
+.CUSTOM_QUOTE {
+  color: #0d2f5f;
+  background: #eef3f8;
+}
+
+.itemNote {
+  margin: 8px 0 0;
+  color: #667085;
+  font-size: 0.86rem;
+}
+
 /* Cantidad */
 .quantity {
   display: inline-flex;
@@ -282,6 +313,18 @@
 .summary button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.notice {
+  margin: 0 0 12px;
+  padding: 12px;
+  border: 1px solid #dfe5dd;
+  border-radius: 14px;
+  color: #0d2f5f;
+  background: #f8faf6;
+  font-size: 0.9rem;
+  font-weight: 750;
+  line-height: 1.45;
 }
 
 .helpText {

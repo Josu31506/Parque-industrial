@@ -109,6 +109,34 @@
   background: rgba(255, 255, 255, 0.18);
 }
 
+.roleSelect {
+  display: grid;
+  gap: 4px;
+  min-width: 132px;
+}
+
+.roleSelect span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.roleSelect select {
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 10px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
+}
+
+.roleSelect option {
+  color: #0d2f5f;
+}
+
 /* Botón Mi cuenta / Ingresar dentro del navbar */
 .actions :global(.primaryButton) {
   color: #07497f;
@@ -150,7 +178,9 @@
     width: 100%;
   }
 
-  .search input {
+  .search input,
+  .roleSelect,
+  .roleSelect select {
     width: 100%;
   }
 
@@ -207,6 +237,8 @@
 
   .search,
   .search input,
+  .roleSelect,
+  .roleSelect select,
   .actions button {
     width: 100%;
   }

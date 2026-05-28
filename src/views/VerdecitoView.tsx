@@ -6,9 +6,13 @@ import styles from './VerdecitoView.module.css';
 
 type VerdecitoViewProps = {
   onProductSelect: (productId: string) => void;
+  onShowSustainableProducts: () => void;
 };
 
-export default function VerdecitoView({ onProductSelect }: VerdecitoViewProps) {
+export default function VerdecitoView({
+  onProductSelect,
+  onShowSustainableProducts,
+}: VerdecitoViewProps) {
   const ecoProducts = products.filter((product) => product.type === 'eco');
 
   return (
@@ -70,7 +74,14 @@ export default function VerdecitoView({ onProductSelect }: VerdecitoViewProps) {
       <section className={`${styles.catalog} section`}>
         <div className="container">
           <div className="sectionHeader">
-            <h2>Revisa tus productos sostenibles <span aria-hidden="true">🌱</span></h2>
+            <h2>Revisa tus productos sostenibles <span aria-hidden="true"></span></h2>
+            <button
+              className={styles.catalogButton}
+              type="button"
+              onClick={onShowSustainableProducts}
+            >
+              Ver todos los productos sostenibles
+            </button>
           </div>
 
           <div className={styles.productGrid}>

@@ -62,6 +62,13 @@
   color: #6b7280;
 }
 
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
 .categoryGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -156,6 +163,14 @@
 
   .heroSearch input,
   .heroSearch button {
+    width: 100%;
+  }
+
+  .heroActions {
+    flex-direction: column;
+  }
+
+  .heroActions button {
     width: 100%;
   }
 
