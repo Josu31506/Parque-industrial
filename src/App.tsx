@@ -768,6 +768,7 @@ export default function App() {
         onNavigate={navigate}
         onOpenCatalog={() => handleNavigateToCatalog()}
         onProductSelect={(productId) => openProduct(productId, 'home')}
+        onShowSustainableProducts={handleShowSustainableProducts}
       />
     );
   };

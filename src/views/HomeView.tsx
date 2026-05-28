@@ -1,6 +1,8 @@
 import type { FormEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import CategoryCard from '../components/CategoryCard/CategoryCard';
 import ProductCard from '../components/ProductCard/ProductCard';
+import fondoVerdecito from '../assets/fondo1.jpeg';
 import { categories, products } from '../data/catalog';
 import type { ViewName } from '../types';
 import styles from './HomeView.module.css';
@@ -10,6 +12,22 @@ type HomeViewProps = {
   onOpenCatalog: () => void;
   onProductSelect: (productId: string) => void;
   onNavigate: (view: ViewName) => void;
+  onShowSustainableProducts: () => void;
+};
+
+type HeroSlide = {
+  id: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  backgroundImage: string;
+  overlay: string;
+  showSearch?: boolean;
+  centerActions?: boolean;
+  primaryLabel: string;
+  secondaryLabel?: string;
+  primaryAction: () => void;
+  secondaryAction?: () => void;
 };
 
 const homeHeroImage =
@@ -20,54 +38,188 @@ export default function HomeView({
   onOpenCatalog,
   onProductSelect,
   onNavigate,
+  onShowSustainableProducts,
 }: HomeViewProps) {
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [carouselCycle, setCarouselCycle] = useState(0);
+  const [quoteMessage, setQuoteMessage] = useState('');
+
+  const heroSlides: HeroSlide[] = useMemo(() => [
+    {
+      id: 'catalog',
+      eyebrow: 'Compra local, diseño directo',
+      title: 'Encuentra tu mueble ideal',
+      description:
+        'Directo del Parque Industrial: descubre talleres, tiendas y fabricantes locales con propuestas listas para transformar tus espacios.',
+      backgroundImage: homeHeroImage,
+      overlay: `linear-gradient(
+        90deg,
+        rgba(9, 28, 58, 0.84) 0%,
+        rgba(9, 28, 58, 0.68) 42%,
+        rgba(9, 28, 58, 0.34) 72%,
+        rgba(9, 28, 58, 0.12) 100%
+      )`,
+      showSearch: true,
+      centerActions: true,
+      primaryLabel: 'Ver catálogo',
+      primaryAction: onOpenCatalog,
+    },
+    {
+      id: 'quote',
+      eyebrow: 'Cotizaciones personalizadas',
+      title: 'Diseña el mueble que necesitas',
+      description:
+        'Solicita muebles a medida, modifica dimensiones, elige colores o envia una referencia para recibir una propuesta personalizada.',
+      backgroundImage: homeHeroImage,
+      overlay: `linear-gradient(
+        90deg,
+        rgba(9, 28, 58, 0.90) 0%,
+        rgba(9, 28, 58, 0.74) 46%,
+        rgba(9, 28, 58, 0.42) 76%,
+        rgba(9, 28, 58, 0.18) 100%
+      )`,
+      primaryLabel: 'Solicitar cotizacion',
+      secondaryLabel: 'Ver productos',
+      primaryAction: () => setQuoteMessage('Este flujo sera gestionado por un asesor en una siguiente fase.'),
+      secondaryAction: onOpenCatalog,
+    },
+    {
+      id: 'verdecito',
+      eyebrow: 'Linea sostenible',
+      title: 'Verdecito',
+      description:
+        'Descubre productos sostenibles, hechos con proposito y pensados para durar.',
+      backgroundImage: fondoVerdecito,
+      overlay: `linear-gradient(
+        90deg,
+        rgba(9, 28, 58, 0.82) 0%,
+        rgba(15, 74, 37, 0.66) 44%,
+        rgba(15, 74, 37, 0.34) 74%,
+        rgba(15, 74, 37, 0.12) 100%
+      )`,
+      primaryLabel: 'Ver sostenibles',
+      secondaryLabel: 'Conoce Verdecito',
+      primaryAction: onShowSustainableProducts,
+      secondaryAction: () => onNavigate('verdecito'),
+    },
+  ], [onNavigate, onOpenCatalog, onShowSustainableProducts]);
+
+  const slide = heroSlides[activeSlide];
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setActiveSlide((currentSlide) => (currentSlide + 1) % heroSlides.length);
+      setQuoteMessage('');
+    }, 50000);
+
+    return () => window.clearInterval(intervalId);
+  }, [heroSlides.length, carouselCycle]);
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
   };
 
+  const resetCarouselTimer = () => {
+    setQuoteMessage('');
+    setCarouselCycle((currentCycle) => currentCycle + 1);
+  };
+
+  const goToSlide = (index: number) => {
+    setActiveSlide(index);
+    resetCarouselTimer();
+  };
+
+  const goToPreviousSlide = () => {
+    setActiveSlide((currentSlide) => (
+      currentSlide === 0 ? heroSlides.length - 1 : currentSlide - 1
+    ));
+    resetCarouselTimer();
+  };
+
+  const goToNextSlide = () => {
+    setActiveSlide((currentSlide) => (currentSlide + 1) % heroSlides.length);
+    resetCarouselTimer();
+  };
+
   return (
     <main>
-      <section
-        className={styles.hero}
-        style={{
-          backgroundImage: `linear-gradient(
-            90deg,
-            rgba(18, 43, 29, 0.78) 0%,
-            rgba(18, 43, 29, 0.58) 42%,
-            rgba(18, 43, 29, 0.24) 72%,
-            rgba(18, 43, 29, 0.10) 100%
-          ), url(${homeHeroImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
-      >
-        <div className={`${styles.heroContent} container`}>
-          <p className={styles.eyebrow}>Compra local, diseño directo</p>
-          <h1>Muebles a medida</h1>
-          <p className={styles.heroCopy}>
-            Directo del Parque Industrial: encuentra talleres, tiendas y fabricantes
-            locales con propuestas listas para transformar tus espacios.
-          </p>
-
-          <form className={styles.heroSearch} role="search" onSubmit={handleSubmit}>
-            <input
-              type="search"
-              placeholder="Busca salas, comedores, dormitorios..."
-              aria-label="Buscar muebles"
+      <section className={styles.hero}>
+        <div className={styles.heroBackdrop} aria-hidden="true">
+          {heroSlides.map((item, index) => (
+            <div
+              className={`${styles.heroSlide} ${index === activeSlide ? styles.activeSlide : ''}`}
+              style={{
+                backgroundImage: `${item.overlay}, url(${item.backgroundImage})`,
+              }}
+              key={item.id}
             />
-            <button className="accentButton" type="submit">Buscar</button>
-          </form>
+          ))}
+        </div>
 
-          <div className={styles.heroActions}>
-            <button className="primaryButton" type="button" onClick={onOpenCatalog}>
-              Ver catalogo
+        <button
+          className={`${styles.carouselButton} ${styles.prevButton}`}
+          type="button"
+          onClick={goToPreviousSlide}
+          aria-label="Slide anterior"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15.5 5L8.5 12L15.5 19" />
+          </svg>
+        </button>
+
+        <div className={`${styles.heroContent} container`} key={slide.id}>
+          <p className={styles.eyebrow}>{slide.eyebrow}</p>
+          <h1>{slide.title}</h1>
+          <p className={styles.heroCopy}>{slide.description}</p>
+
+          {slide.showSearch && (
+            <form className={styles.heroSearch} role="search" onSubmit={handleSubmit}>
+              <input
+                type="search"
+                placeholder="Busca salas, comedores, dormitorios..."
+                aria-label="Buscar muebles"
+              />
+              <button className="accentButton" type="submit">Buscar</button>
+            </form>
+          )}
+
+          <div className={`${styles.heroActions} ${slide.centerActions ? styles.centerActions : ''}`}>
+          <button className="primaryButton" type="button" onClick={slide.primaryAction}>
+            {slide.primaryLabel}
+          </button>
+
+          {slide.secondaryLabel && slide.secondaryAction && (
+            <button className="accentButton" type="button" onClick={slide.secondaryAction}>
+              {slide.secondaryLabel}
             </button>
-            <button className="accentButton" type="button" onClick={() => onNavigate('verdecito')}>
-              Explorar Verdecito
-            </button>
+          )}
+        </div>
+
+          {quoteMessage && <p className={styles.heroNotice}>{quoteMessage}</p>}
+
+          <div className={styles.carouselDots} aria-label="Seleccionar slide">
+            {heroSlides.map((item, index) => (
+              <button
+                className={index === activeSlide ? styles.activeDot : undefined}
+                type="button"
+                key={item.id}
+                onClick={() => goToSlide(index)}
+                aria-label={`Ver slide ${index + 1}: ${item.title}`}
+              />
+            ))}
           </div>
         </div>
+
+        <button
+          className={`${styles.carouselButton} ${styles.nextButton}`}
+          type="button"
+          onClick={goToNextSlide}
+          aria-label="Siguiente slide"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8.5 5L15.5 12L8.5 19" />
+          </svg>
+        </button>
       </section>
 
       <section className="section" id="categorias">

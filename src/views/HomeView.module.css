@@ -1,12 +1,63 @@
 .hero {
-  min-height: 560px;
+  position: relative;
+  overflow: hidden;
+  min-height: 620px;
   display: flex;
   align-items: center;
-  padding: 90px 0;
+  padding: 96px 0;
+  background: #091c3a;
+}
+
+.heroBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.heroSlide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  transform: scale(1.025);
+  transition: opacity 700ms ease, transform 1600ms ease;
+}
+
+.activeSlide {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(9, 28, 58, 0.08), rgba(9, 28, 58, 0.28)),
+    radial-gradient(circle at 18% 50%, rgba(229, 152, 102, 0.16), transparent 34%);
+  pointer-events: none;
 }
 
 .heroContent {
-  max-width: 720px;
+  position: relative;
+  z-index: 2;
+  max-width: 760px;
+  animation: slideTextIn 520ms ease both;
+}
+
+@keyframes slideTextIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .eyebrow {
@@ -21,8 +72,8 @@
 .hero h1 {
   margin: 0;
   color: #ffffff;
-  font-size: clamp(3rem, 7vw, 5.8rem);
-  line-height: 0.98;
+  font-size: clamp(3rem, 7vw, 5.6rem);
+  line-height: 1;
   letter-spacing: -2px;
   text-shadow: 0 5px 22px rgba(0, 0, 0, 0.34);
 }
@@ -64,9 +115,107 @@
 
 .heroActions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 18px;
+  align-items: center;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.centerActions {
+  max-width: 640px;
+  justify-content: center;
+}
+
+.centerActions button {
+  min-width: 180px;
+}
+
+.heroNotice {
+  width: fit-content;
+  max-width: 640px;
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 12px;
+  color: #ffffff;
+  background: rgba(15, 44, 89, 0.42);
+  font-weight: 800;
+  backdrop-filter: blur(8px);
+}
+
+.carouselButton {
+  position: absolute;
+  top: 50%;
+  z-index: 5;
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: rgba(9, 28, 58, 0.36);
+  backdrop-filter: blur(12px);
+  transform: translateY(-50%);
+  cursor: pointer;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22);
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.carouselButton:hover {
+  background: rgba(9, 28, 58, 0.78);
+  border-color: rgba(255, 255, 255, 0.74);
+  transform: translateY(-50%) scale(1.06);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.3);
+}
+
+.carouselButton svg {
+  width: 28px;
+  height: 28px;
+}
+
+.carouselButton path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.prevButton {
+  left: 28px;
+}
+
+.nextButton {
+  right: 28px;
+}
+
+.carouselDots {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 34px;
+}
+
+.carouselDots button {
+  width: 11px;
+  height: 11px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.38);
+  cursor: pointer;
+  transition: width 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.carouselDots .activeDot {
+  width: 32px;
+  border-radius: 999px;
+  border-color: #ffffff;
+  background: #ffffff;
 }
 
 .categoryGrid {
@@ -139,8 +288,8 @@
 
 @media (max-width: 680px) {
   .hero {
-    min-height: auto;
-    padding: 70px 0;
+    min-height: 560px;
+    padding: 58px 0 82px;
   }
 
   .heroContent {
@@ -148,7 +297,7 @@
   }
 
   .hero h1 {
-    font-size: clamp(2.4rem, 12vw, 3.6rem);
+    font-size: clamp(2.25rem, 11vw, 3.35rem);
     letter-spacing: -1px;
   }
 
@@ -158,6 +307,7 @@
 
   .heroSearch {
     flex-direction: column;
+    margin-top: 24px;
     padding: 10px;
   }
 
@@ -166,12 +316,54 @@
     width: 100%;
   }
 
-  .heroActions {
+  .heroActions,
+  .centerActions {
+    width: 100%;
+    max-width: 100%;
+    justify-content: center;
     flex-direction: column;
+    margin-top: 18px;
   }
 
-  .heroActions button {
+  .heroActions button,
+  .centerActions button {
     width: 100%;
+    min-width: 0;
+  }
+
+  .heroNotice {
+    width: 100%;
+  }
+
+  .carouselButton {
+    top: auto;
+    bottom: 22px;
+    width: 40px;
+    height: 40px;
+    transform: none;
+  }
+
+  .carouselButton:hover {
+    transform: scale(1.03);
+  }
+
+  .carouselButton svg {
+    width: 23px;
+    height: 23px;
+  }
+
+  .prevButton {
+    left: 18px;
+  }
+
+  .nextButton {
+    right: 18px;
+  }
+
+  .carouselDots {
+    justify-content: center;
+    margin-top: 20px;
+    padding: 0 52px;
   }
 
   .categoryGrid,
