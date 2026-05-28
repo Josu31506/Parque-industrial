@@ -2,7 +2,6 @@ import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import CategoryCard from '../components/CategoryCard/CategoryCard';
 import ProductCard from '../components/ProductCard/ProductCard';
-import fondoVerdecito from '../assets/fondo1.jpeg';
 import { categories, products } from '../data/catalog';
 import type { ViewName } from '../types';
 import styles from './HomeView.module.css';
@@ -32,6 +31,12 @@ type HeroSlide = {
 
 const homeHeroImage =
   'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=1200';
+  
+const quoteHeroImage =
+  'https://conkansei.com/wp-content/uploads/2020/12/proyecto-bricolaje.jpg';
+
+const verdecitoHeroImage =
+  'https://miroytengo.es/blog/wp-content/uploads/2-24.jpg';
 
 export default function HomeView({
   onCategorySelect,
@@ -67,10 +72,10 @@ export default function HomeView({
     {
       id: 'quote',
       eyebrow: 'Cotizaciones personalizadas',
-      title: 'Diseña el mueble que necesitas',
+      title: 'Tu idea, hecha mueble',
       description:
-        'Solicita muebles a medida, modifica dimensiones, elige colores o envia una referencia para recibir una propuesta personalizada.',
-      backgroundImage: homeHeroImage,
+        'Solicita muebles a medida, modifica dimensiones, elige colores o envía una referencia para recibir una propuesta personalizada.',
+      backgroundImage: quoteHeroImage,
       overlay: `linear-gradient(
         90deg,
         rgba(9, 28, 58, 0.90) 0%,
@@ -78,18 +83,18 @@ export default function HomeView({
         rgba(9, 28, 58, 0.42) 76%,
         rgba(9, 28, 58, 0.18) 100%
       )`,
-      primaryLabel: 'Solicitar cotizacion',
+      primaryLabel: 'Solicitar cotización',
       secondaryLabel: 'Ver productos',
-      primaryAction: () => setQuoteMessage('Este flujo sera gestionado por un asesor en una siguiente fase.'),
+      primaryAction: () => setQuoteMessage('Este flujo será gestionado por un asesor en una siguiente fase.'),
       secondaryAction: onOpenCatalog,
     },
     {
       id: 'verdecito',
-      eyebrow: 'Linea sostenible',
+      eyebrow: 'Línea sostenible',
       title: 'Verdecito',
       description:
-        'Descubre productos sostenibles, hechos con proposito y pensados para durar.',
-      backgroundImage: fondoVerdecito,
+        'Descubre productos sostenibles, hechos con propósito y pensados para durar.',
+      backgroundImage: verdecitoHeroImage,
       overlay: `linear-gradient(
         90deg,
         rgba(9, 28, 58, 0.82) 0%,
