@@ -1,11 +1,11 @@
 import type { ChangeEvent } from 'react';
 import { useState } from 'react';
-import { products } from '../data/catalog';
-import type { Producer, PurchaseRequest, PurchaseRequestGroup, Sale } from '../types';
+import type { Producer, Product, PurchaseRequest, PurchaseRequestGroup, Sale } from '../types';
 import styles from './SellerDashboardView.module.css';
 
 type SellerDashboardViewProps = {
   activeProducerId: string;
+  products: Product[];
   producers: Producer[];
   requests: PurchaseRequest[];
   sales: Sale[];
@@ -20,6 +20,7 @@ const formatMoney = (value: number) => `S/. ${value.toLocaleString('es-PE')}`;
 
 export default function SellerDashboardView({
   activeProducerId,
+  products,
   producers,
   requests,
   sales,

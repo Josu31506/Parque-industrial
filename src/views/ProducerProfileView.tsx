@@ -1,6 +1,5 @@
 import ProductCard from '../components/ProductCard/ProductCard';
-import { products } from '../data/catalog';
-import type { Producer } from '../types';
+import type { Producer, Product } from '../types';
 import styles from './ProducerProfileView.module.css';
 
 type ProducerProfileViewProps = {
@@ -8,6 +7,7 @@ type ProducerProfileViewProps = {
   onBack: () => void;
   onOpenCatalog: () => void;
   onProductSelect: (productId: string) => void;
+  products: Product[];
 };
 
 export default function ProducerProfileView({
@@ -15,6 +15,7 @@ export default function ProducerProfileView({
   onBack,
   onOpenCatalog,
   onProductSelect,
+  products,
 }: ProducerProfileViewProps) {
   if (!producer) {
     return (

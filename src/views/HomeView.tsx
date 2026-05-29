@@ -2,16 +2,19 @@ import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import CategoryCard from '../components/CategoryCard/CategoryCard';
 import ProductCard from '../components/ProductCard/ProductCard';
-import { categories, products } from '../data/catalog';
-import type { ViewName } from '../types';
+import type { Category, Product, ViewName } from '../types';
 import styles from './HomeView.module.css';
 
 type HomeViewProps = {
+  catalogError?: string;
+  categories: Category[];
+  isLoadingCatalog?: boolean;
   onCategorySelect: (categoryName: string) => void;
   onOpenCatalog: () => void;
   onProductSelect: (productId: string) => void;
   onNavigate: (view: ViewName) => void;
   onShowSustainableProducts: () => void;
+  products: Product[];
 };
 
 type HeroSlide = {
@@ -39,11 +42,15 @@ const verdecitoHeroImage =
   'https://miroytengo.es/blog/wp-content/uploads/2-24.jpg';
 
 export default function HomeView({
+  catalogError,
+  categories,
+  isLoadingCatalog,
   onCategorySelect,
   onOpenCatalog,
   onProductSelect,
   onNavigate,
   onShowSustainableProducts,
+  products,
 }: HomeViewProps) {
   const [activeSlide, setActiveSlide] = useState(0);
   const [carouselCycle, setCarouselCycle] = useState(0);
@@ -115,7 +122,7 @@ export default function HomeView({
     const intervalId = window.setInterval(() => {
       setActiveSlide((currentSlide) => (currentSlide + 1) % heroSlides.length);
       setQuoteMessage('');
-    }, 50000);
+    }, 5000);
 
     return () => window.clearInterval(intervalId);
   }, [heroSlides.length, carouselCycle]);
@@ -257,15 +264,20 @@ export default function HomeView({
             </button>
           </div>
 
-          <div className={styles.productGrid}>
-            {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                {...product}
-                onClick={() => onProductSelect(product.id)}
-              />
-            ))}
-          </div>
+          {isLoadingCatalog && <p>Cargando productos...</p>}
+          {catalogError && <p>{catalogError}</p>}
+
+          {!isLoadingCatalog && (
+            <div className={styles.productGrid}>
+              {products.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  {...product}
+                  onClick={() => onProductSelect(product.id)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

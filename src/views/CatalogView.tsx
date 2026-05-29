@@ -1,18 +1,30 @@
 import type { ChangeEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import ProductCard from '../components/ProductCard/ProductCard';
-import { categories, getProducerById, producers, products } from '../data/catalog';
-import type { CatalogFilter, ProductType } from '../types';
+import type { CatalogFilter, Category, Producer, Product, ProductType } from '../types';
 import styles from './CatalogView.module.css';
 
 type CatalogViewProps = {
+  catalogError?: string;
+  categories: Category[];
   initialFilter: CatalogFilter | null;
+  isLoadingCatalog?: boolean;
   onProductSelect: (productId: string) => void;
+  producers: Producer[];
+  products: Product[];
 };
 
 const normalize = (value: string) => value.trim().toLowerCase();
 
-export default function CatalogView({ initialFilter, onProductSelect }: CatalogViewProps) {
+export default function CatalogView({
+  catalogError,
+  categories,
+  initialFilter,
+  isLoadingCatalog,
+  onProductSelect,
+  producers,
+  products,
+}: CatalogViewProps) {
   const [query, setQuery] = useState(initialFilter?.query ?? '');
   const [category, setCategory] = useState(initialFilter?.category ?? '');
   const [productType, setProductType] = useState<ProductType | ''>(initialFilter?.type ?? '');
@@ -30,12 +42,14 @@ export default function CatalogView({ initialFilter, onProductSelect }: CatalogV
       value: item.id,
       label: item.name,
     }))
-  ), []);
+  ), [producers]);
 
   const filteredProducts = products.filter((product) => {
     const text = normalize(`${product.title} ${product.storeName} ${product.category ?? ''}`);
     const matchesQuery = query ? text.includes(normalize(query)) : true;
-    const matchesCategory = category ? product.category === category : true;
+    const matchesCategory = category
+      ? product.category === category || product.categoryId === category
+      : true;
     const matchesType = productType ? product.type === productType : true;
     const matchesProducer = producer
       ? product.producerId === producer || product.storeName === producer
@@ -121,18 +135,21 @@ export default function CatalogView({ initialFilter, onProductSelect }: CatalogV
           </span>
         </div>
 
-        {filteredProducts.length > 0 ? (
+        {isLoadingCatalog && <p>Cargando productos...</p>}
+        {catalogError && <p>{catalogError}</p>}
+
+        {!isLoadingCatalog && filteredProducts.length > 0 ? (
           <div className={styles.productGrid}>
             {filteredProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 {...product}
-                storeName={getProducerById(product.producerId)?.name ?? product.storeName}
+                storeName={producers.find((item) => item.id === product.producerId)?.name ?? product.storeName}
                 onClick={() => onProductSelect(product.id)}
               />
             ))}
           </div>
-        ) : (
+        ) : !isLoadingCatalog ? (
           <div className={styles.empty}>
             <h2>No encontramos productos con esos filtros</h2>
             <p>Prueba con otra categoria, productora o termino de busqueda.</p>
@@ -140,7 +157,7 @@ export default function CatalogView({ initialFilter, onProductSelect }: CatalogV
               Ver todos los productos
             </button>
           </div>
-        )}
+        ) : null}
       </section>
     </main>
   );

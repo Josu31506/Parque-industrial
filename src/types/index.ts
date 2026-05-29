@@ -4,6 +4,8 @@ export type AvailabilityType = 'IN_STOCK' | 'MADE_TO_ORDER' | 'CUSTOM_QUOTE';
 
 export type Role = 'customer' | 'seller' | 'admin';
 
+export type ApiRole = 'CLIENT' | 'SELLER' | 'ADVISOR' | 'ADMIN';
+
 export type OrderStatus = 'Pedido confirmado' | 'En preparación' | 'En camino' | 'Entregado';
 
 export type PaymentOption = 'FULL_PAYMENT' | 'HALF_ADVANCE';
@@ -73,6 +75,7 @@ export type Product = {
   storeName: string;
   description: string;
   category?: string;
+  categoryId?: string;
   rating?: number;
   oldPrice?: string;
   badge?: string;
@@ -96,6 +99,7 @@ export type Producer = {
 };
 
 export type Category = {
+  id?: string;
   name: string;
   image?: string;
   icon?: string;
@@ -105,13 +109,16 @@ export type Category = {
 };
 
 export type CartItem = {
+  id?: string;
   productId: string;
   quantity: number;
 };
 
 export type User = {
+  id?: string;
   name: string;
   email: string;
+  role?: ApiRole;
 };
 
 export type MarketplaceItem = CartItem & {
@@ -123,6 +130,7 @@ export type MarketplaceItem = CartItem & {
 };
 
 export type PurchaseRequestGroup = {
+  id?: string;
   producerId: string;
   producerName: string;
   items: MarketplaceItem[];
@@ -174,6 +182,7 @@ export type Sale = {
   id: string;
   orderId: string;
   producerId: string;
+  producerName?: string;
   producerName: string;
   items: MarketplaceItem[];
   grossAmount: number;
@@ -210,6 +219,7 @@ export type Notification = {
 
 export type CatalogFilter = {
   category?: string;
+  categoryId?: string;
   type?: ProductType;
   producer?: string;
   query?: string;
@@ -222,4 +232,177 @@ export type Review = {
   rating: number;
   comment: string;
   date: string;
+};
+
+export type ApiUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: ApiRole;
+  phone?: string | null;
+  isActive?: boolean;
+};
+
+export type ApiProducer = {
+  id: string;
+  userId?: string;
+  businessName: string;
+  type: string;
+  location: string;
+  description: string;
+  rating?: number | null;
+  isApproved?: boolean;
+};
+
+export type ApiCategory = {
+  id: string;
+  name: string;
+  slug?: string;
+  description?: string | null;
+  icon?: string | null;
+};
+
+export type ApiProduct = {
+  id: string;
+  producerId?: string;
+  categoryId?: string;
+  title: string;
+  description: string;
+  price?: number | string;
+  numericPrice?: number | string;
+  imageUrl: string;
+  badge?: string | null;
+  type?: 'FEATURED' | 'ECO' | string;
+  availabilityType: AvailabilityType;
+  stock?: number | null;
+  estimatedDispatchDays?: number | null;
+  dimensions?: string | null;
+  materials?: string | null;
+  colors?: string[] | null;
+  finish?: string | null;
+  customizable?: boolean;
+  isActive?: boolean;
+  producer?: ApiProducer | null;
+  category?: ApiCategory | null;
+};
+
+export type ApiCartItem = {
+  id: string;
+  userId: string;
+  productId: string;
+  quantity: number;
+  product?: ApiProduct;
+};
+
+export type ApiPurchaseRequestItem = {
+  id: string;
+  purchaseRequestId?: string;
+  productId: string;
+  producerId: string;
+  quantity: number;
+  unitPrice: number | string;
+  totalPrice: number | string;
+  product?: ApiProduct | null;
+  producer?: ApiProducer | null;
+};
+
+export type ApiPurchaseRequestGroup = {
+  id: string;
+  purchaseRequestId: string;
+  producerId: string;
+  status: PurchaseRequestGroupStatus;
+  readyDate?: string | null;
+  observation?: string | null;
+  producer?: ApiProducer | null;
+};
+
+export type ApiPurchaseRequest = {
+  id: string;
+  customerId: string;
+  status: PurchaseRequestStatus;
+  deliveryDays: number;
+  total: number;
+  estimatedDeliveryDate?: string | null;
+  createdAt: string;
+  items?: ApiPurchaseRequestItem[];
+  groups?: ApiPurchaseRequestGroup[];
+};
+
+export type ApiOrderItem = {
+  id: string;
+  orderId?: string;
+  productId: string;
+  producerId: string;
+  quantity: number;
+  unitPrice: number | string;
+  totalPrice: number | string;
+  status?: string;
+  product?: ApiProduct | null;
+  producer?: ApiProducer | null;
+};
+
+export type ApiOrder = {
+  id: string;
+  customerId: string;
+  status: string;
+  total: number;
+  paymentOption?: PaymentOption | null;
+  paidAmount?: number | null;
+  remainingAmount?: number | null;
+  paymentStatus?: PaymentStatus | null;
+  fundsStatus?: FundsStatus | null;
+  estimatedDeliveryDate?: string | null;
+  createdAt: string;
+  items?: ApiOrderItem[];
+  sales?: ApiSale[];
+};
+
+export type ApiSaleItem = {
+  id: string;
+  saleId?: string;
+  productId: string;
+  quantity: number;
+  unitPrice: number | string;
+  totalPrice: number | string;
+  status?: string;
+  product?: ApiProduct | null;
+};
+
+export type ApiSale = {
+  id: string;
+  orderId: string;
+  producerId: string;
+  status: SaleStatus;
+  grossAmount: number;
+  commissionAmount: number;
+  netAmount: number;
+  paymentStatus: PaymentStatus;
+  fundsStatus: FundsStatus;
+  readyDate?: string | null;
+  observation?: string | null;
+  createdAt: string;
+  producer?: ApiProducer | null;
+  items?: ApiSaleItem[];
+};
+
+export type ApiClaim = {
+  id: string;
+  orderId: string;
+  customerId: string;
+  reason: string;
+  description: string;
+  status: ClaimStatus;
+  createdAt: string;
+};
+
+export type ApiNotification = {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type?: string | null;
+  read: boolean;
+  targetType?: string | null;
+  targetId?: string | null;
+  createdAt: string;
 };

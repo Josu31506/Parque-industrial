@@ -1,14 +1,14 @@
 import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { getProducerById } from '../data/catalog';
 import { reviews } from '../data/reviews';
-import type { Product } from '../types';
+import type { Producer, Product } from '../types';
 import styles from './ProductDetailView.module.css';
 
 type DetailTab = 'description' | 'technical' | 'producer' | 'reviews';
 
 type ProductDetailViewProps = {
   product: Product | undefined;
+  producer?: Producer;
   cartMessage?: string;
   onAddToCart: (productId: string) => void;
   onBack: () => void;
@@ -30,10 +30,10 @@ export default function ProductDetailView({
   onBack,
   onProducerSelect,
   product,
+  producer,
 }: ProductDetailViewProps) {
   const [activeTab, setActiveTab] = useState<DetailTab>('description');
   const [reviewPage, setReviewPage] = useState(0);
-  const producer = getProducerById(product?.producerId);
 
   useEffect(() => {
     setActiveTab('description');

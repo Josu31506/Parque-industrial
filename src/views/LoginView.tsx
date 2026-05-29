@@ -17,12 +17,12 @@ export default function LoginView({ error, onLogin }: LoginViewProps) {
 
         <label className={styles.field}>
           <span>Correo</span>
-          <input name="email" type="email" placeholder="usuario@verdecito.com" required />
+          <input name="email" type="email" placeholder="cliente@demo.com" required />
         </label>
 
         <label className={styles.field}>
           <span>Contrasena</span>
-          <input name="password" type="password" placeholder="123456" required />
+          <input name="password" type="password" placeholder="Cliente123456" required />
         </label>
 
         {error && <span className={styles.error}>{error}</span>}
@@ -31,8 +31,9 @@ export default function LoginView({ error, onLogin }: LoginViewProps) {
 
         <div className={styles.testCredentials}>
           <span>Credenciales de prueba</span>
-          <strong>usuario@verdecito.com</strong>
-          <strong>123456</strong>
+          <strong>cliente@demo.com / Cliente123456</strong>
+          <strong>productor1@demo.com / Productor123456</strong>
+          <strong>admin@parqueindustrial.com / Admin123456</strong>
         </div>
       </form>
     </main>

@@ -1,17 +1,19 @@
 import ProductCard from '../components/ProductCard/ProductCard';
 import imagenFondoLocal from '../assets/fondo1.jpeg';
 import logoEcoLocal from '../assets/logo.jpeg';
-import { products } from '../data/catalog';
+import type { Product } from '../types';
 import styles from './VerdecitoView.module.css';
 
 type VerdecitoViewProps = {
   onProductSelect: (productId: string) => void;
   onShowSustainableProducts: () => void;
+  products: Product[];
 };
 
 export default function VerdecitoView({
   onProductSelect,
   onShowSustainableProducts,
+  products,
 }: VerdecitoViewProps) {
   const ecoProducts = products.filter((product) => product.type === 'eco');
 

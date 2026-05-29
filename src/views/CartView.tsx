@@ -1,10 +1,10 @@
 import type { CSSProperties } from 'react';
-import { products } from '../data/catalog';
 import type { AvailabilityType, CartItem, Product, User, ViewName } from '../types';
 import styles from './CartView.module.css';
 
 type CartViewProps = {
   cartItems: CartItem[];
+  products: Product[];
   currentUser: User | null;
   cartNotice?: string;
   onCheckout: () => void;
@@ -36,6 +36,7 @@ const formatMoney = (value: number) => `S/. ${value.toLocaleString('es-PE')}`;
 
 export default function CartView({
   cartItems,
+  products,
   currentUser,
   cartNotice,
   onCheckout,

@@ -14,6 +14,7 @@ type NavbarProps = {
   currentUser: User | null;
   notificationCount?: number;
   onNavigate: (view: ViewName) => void;
+  onLogout?: () => void;
   onRoleChange: (role: Role) => void;
 };
 
@@ -53,6 +54,7 @@ export default function Navbar({
   currentUser,
   notificationCount = 0,
   onNavigate,
+  onLogout,
   onRoleChange,
 }: NavbarProps) {
   const handleNavClick = (item: NavItem) => {
@@ -127,6 +129,12 @@ export default function Navbar({
           >
             {currentUser ? 'Mi cuenta' : 'Ingresar'}
           </button>
+
+          {currentUser && onLogout && (
+            <button className="accentButton" type="button" onClick={onLogout}>
+              Salir
+            </button>
+          )}
         </div>
       </nav>
     </header>

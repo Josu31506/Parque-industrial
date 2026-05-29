@@ -1,17 +1,60 @@
 import type { FormEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Footer from './components/Footer/Footer';
 import Navbar from './components/Navbar/Navbar';
-import { getProducerById, producers, products } from './data/catalog';
+import {
+  getProducerById as getFallbackProducerById,
+  categories as fallbackCategories,
+  producers as fallbackProducers,
+  products as fallbackProducts,
+} from './data/catalog';
+import { getMe, login as loginWithBackend, logout as logoutFromBackend } from './services/authService';
+import { getAccessToken } from './services/api';
+import {
+  addCartItem as addRemoteCartItem,
+  clearCart as clearRemoteCart,
+  getCart as getRemoteCart,
+  removeCartItem as removeRemoteCartItem,
+  updateCartItem as updateRemoteCartItem,
+} from './services/cartService';
+import { getCategories as fetchCategories } from './services/categoriesService';
+import {
+  createClaim as createRemoteClaim,
+  getAllClaims,
+  getMyClaims,
+  rejectClaim,
+  resolveClaim,
+} from './services/claimsService';
+import { getNotifications, markAllNotificationsAsRead, markNotificationAsRead } from './services/notificationsService';
+import { getMyOrders, getOrderTracking } from './services/ordersService';
+import { getProducers as fetchProducers } from './services/producersService';
+import { getProducts as fetchProducts } from './services/productsService';
+import {
+  cancelPurchaseRequest,
+  confirmPurchaseRequestGroup,
+  continueWithConfirmed,
+  createPurchaseRequest,
+  getMyPurchaseRequests,
+  payPurchaseRequest,
+  rejectPurchaseRequestGroup,
+} from './services/purchaseRequestsService';
+import {
+  getMySales,
+  markSaleInPreparation,
+  markSaleReadyForDispatch,
+} from './services/salesService';
 import type {
   CartItem,
   CatalogFilter,
+  Category,
   Claim,
   Notification,
   MarketplaceItem,
   Order,
   OrderProducerGroup,
   PaymentOption,
+  Producer,
+  Product,
   PurchaseRequest,
   PurchaseRequestGroup,
   Role,
@@ -19,6 +62,7 @@ import type {
   SaleStatus,
   User,
   ViewName,
+  ApiRole,
 } from './types';
 import CartView from './views/CartView';
 import CatalogView from './views/CatalogView';
@@ -59,6 +103,25 @@ const addDays = (date: Date, days: number) => {
 
 const parseDate = (value: string) => new Date(`${value}T00:00:00`);
 
+const mapApiRoleToUiRole = (role: ApiRole | undefined): Role => {
+  if (role === 'SELLER') return 'seller';
+  if (role === 'ADMIN' || role === 'ADVISOR') return 'admin';
+  return 'customer';
+};
+
+const mapClaimReasonToApi = (reason: string) => {
+  const reasons: Record<string, string> = {
+    'Producto danado': 'DAMAGED_PRODUCT',
+    'Producto dañado': 'DAMAGED_PRODUCT',
+    'Producto no corresponde': 'WRONG_PRODUCT',
+    'Medidas incorrectas': 'WRONG_DIMENSIONS',
+    'Color/acabado incorrecto': 'WRONG_COLOR',
+    'No llego el producto': 'NOT_DELIVERED',
+  };
+
+  return reasons[reason] ?? 'OTHER';
+};
+
 export default function App() {
   const [view, setView] = useState<ViewName>('home');
   const [currentRole, setCurrentRole] = useState<Role>('customer');
@@ -67,9 +130,15 @@ export default function App() {
   const [previousView, setPreviousView] = useState<ViewName>('home');
   const [catalogFilter, setCatalogFilter] = useState<CatalogFilter | null>(null);
   const [selectedProducerId, setSelectedProducerId] = useState<string | null>(null);
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>(fallbackProducts);
+  const [catalogCategories, setCatalogCategories] = useState<Category[]>(fallbackCategories);
+  const [catalogProducers, setCatalogProducers] = useState<Producer[]>(fallbackProducers);
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
+  const [catalogError, setCatalogError] = useState('');
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [hasPendingCheckout, setHasPendingCheckout] = useState(false);
+  const [pendingCartProductId, setPendingCartProductId] = useState<string | null>(null);
   const [loginError, setLoginError] = useState('');
   const [cartMessage, setCartMessage] = useState('');
   const [cartNotice, setCartNotice] = useState('');
@@ -81,6 +150,179 @@ export default function App() {
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedPurchaseRequestId, setSelectedPurchaseRequestId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadCatalog = async () => {
+      setIsLoadingCatalog(true);
+      setCatalogError('');
+
+      try {
+        const [loadedProducts, loadedCategories, loadedProducers] = await Promise.all([
+          fetchProducts(),
+          fetchCategories(),
+          fetchProducers(),
+        ]);
+
+        if (!isMounted) return;
+
+        setCatalogProducts(loadedProducts.length ? loadedProducts : fallbackProducts);
+        setCatalogCategories(loadedCategories.length ? loadedCategories : fallbackCategories);
+        setCatalogProducers(loadedProducers.length ? loadedProducers : fallbackProducers);
+      } catch {
+        if (!isMounted) return;
+        setCatalogProducts(fallbackProducts);
+        setCatalogCategories(fallbackCategories);
+        setCatalogProducers(fallbackProducers);
+        setCatalogError('No pudimos cargar el catalogo. Verifica que el backend este activo.');
+      } finally {
+        if (isMounted) {
+          setIsLoadingCatalog(false);
+        }
+      }
+    };
+
+    void loadCatalog();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!catalogProducers.length) return;
+    if (catalogProducers.some((producer) => producer.id === activeProducerId)) return;
+    setActiveProducerId(catalogProducers[0].id);
+  }, [activeProducerId, catalogProducers]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const restoreSession = async () => {
+      if (!getAccessToken()) return;
+
+      try {
+        const user = await getMe();
+        if (!isMounted) return;
+
+        setCurrentUser(user);
+        setCurrentRole(mapApiRoleToUiRole(user.role));
+      } catch {
+        if (!isMounted) return;
+        logoutFromBackend();
+        setCurrentUser(null);
+      }
+    };
+
+    void restoreSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSessionData = async () => {
+      if (!currentUser) return;
+
+      try {
+        if (currentRole === 'customer') {
+          const [remoteCart, remoteRequests, remoteOrders, remoteClaims] = await Promise.all([
+            getRemoteCart(),
+            getMyPurchaseRequests(),
+            getMyOrders(),
+            getMyClaims(),
+          ]);
+
+          if (!isMounted) return;
+          setCartItems(remoteCart);
+          setPurchaseRequests(remoteRequests);
+          setOrders(remoteOrders);
+          setClaims(remoteClaims);
+        }
+
+        if (currentRole === 'seller' || currentRole === 'admin') {
+          const remoteSales = await getMySales();
+          if (!isMounted) return;
+          setSales(remoteSales);
+        }
+
+        if (currentRole === 'admin') {
+          const remoteClaims = await getAllClaims();
+          if (!isMounted) return;
+          setClaims(remoteClaims);
+        }
+
+        const remoteNotifications = await getNotifications(currentRole);
+        if (!isMounted) return;
+        setNotifications(remoteNotifications);
+      } catch {
+        // Keep local state as a fallback when the backend is not reachable.
+      }
+    };
+
+    void loadSessionData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser, currentRole]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const refreshActiveView = async () => {
+      if (!currentUser) return;
+
+      try {
+        if (view === 'cart' && currentRole === 'customer') {
+          const remoteCart = await getRemoteCart();
+          if (isMounted) setCartItems(remoteCart);
+        }
+
+        if (view === 'orders' && currentRole === 'customer') {
+          const remoteOrders = await getMyOrders();
+          if (isMounted) setOrders(remoteOrders);
+        }
+
+        if (view === 'purchaseRequests' && currentRole === 'customer') {
+          const remoteRequests = await getMyPurchaseRequests();
+          if (isMounted) setPurchaseRequests(remoteRequests);
+        }
+
+        if (view === 'sellerDashboard' && (currentRole === 'seller' || currentRole === 'admin')) {
+          const remoteSales = await getMySales();
+          if (isMounted) setSales(remoteSales);
+        }
+
+        if (view === 'claims') {
+          const remoteClaims = currentRole === 'admin' ? await getAllClaims() : await getMyClaims();
+          if (isMounted) setClaims(remoteClaims);
+        }
+
+        if (view === 'notifications') {
+          const remoteNotifications = await getNotifications(currentRole);
+          if (isMounted) setNotifications(remoteNotifications);
+        }
+      } catch {
+        // Keep local data if the backend request fails.
+      }
+    };
+
+    void refreshActiveView();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [view, currentUser, currentRole]);
+
+  const findProducerById = (producerId: string | undefined) => (
+    catalogProducers.find((producer) => producer.id === producerId)
+      ?? getFallbackProducerById(producerId)
+  );
 
   const navigate = (nextView: ViewName) => {
     setView(nextView);
@@ -108,10 +350,10 @@ export default function App() {
 
   const getMarketplaceItems = (items: CartItem[]): MarketplaceItem[] => (
     items.flatMap((item) => {
-      const product = products.find((entry) => entry.id === item.productId);
+      const product = catalogProducts.find((entry) => entry.id === item.productId);
       if (!product) return [];
 
-      const producer = getProducerById(product.producerId);
+      const producer = findProducerById(product.producerId);
 
       return [{
         productId: product.id,
@@ -284,37 +526,93 @@ export default function App() {
     navigate('productDetail');
   };
 
-  const addToCart = (productId: string) => {
-    setCartItems((currentItems) => {
-      const existingItem = currentItems.find((item) => item.productId === productId);
+  const addToCart = async (productId: string) => {
+    if (!currentUser) {
+      setHasPendingCheckout(true);
+      setPendingCartProductId(productId);
+      setCartMessage('Debes iniciar sesion para agregar productos al carrito.');
+      navigate('login');
+      return;
+    }
 
-      if (existingItem) {
-        return currentItems.map((item) => (
-          item.productId === productId
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        ));
-      }
+    try {
+      await addRemoteCartItem(productId, 1);
+      setCartItems(await getRemoteCart());
+    } catch {
+      setCartItems((currentItems) => {
+        const existingItem = currentItems.find((item) => item.productId === productId);
 
-      return [...currentItems, { productId, quantity: 1 }];
-    });
+        if (existingItem) {
+          return currentItems.map((item) => (
+            item.productId === productId
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          ));
+        }
+
+        return [...currentItems, { productId, quantity: 1 }];
+      });
+    }
+
     setCartMessage('Producto agregado al carrito.');
     setCartNotice('');
   };
 
-  const removeFromCart = (productId: string) => {
-    setCartItems((currentItems) => currentItems.filter((item) => item.productId !== productId));
+  const removeFromCart = async (productId: string) => {
+    const item = cartItems.find((entry) => entry.productId === productId);
+
+    try {
+      if (item?.id) {
+        await removeRemoteCartItem(item.id);
+      }
+    } catch {
+      // Fall back to local state below.
+    }
+
+    setCartItems((currentItems) => currentItems.filter((entry) => entry.productId !== productId));
   };
 
-  const increaseQuantity = (productId: string) => {
-    setCartItems((currentItems) => currentItems.map((item) => (
-      item.productId === productId
-        ? { ...item, quantity: item.quantity + 1 }
-        : item
+  const increaseQuantity = async (productId: string) => {
+    const item = cartItems.find((entry) => entry.productId === productId);
+
+    try {
+      if (item?.id) {
+        const updated = await updateRemoteCartItem(item.id, item.quantity + 1);
+        setCartItems((currentItems) => currentItems.map((entry) => (
+          entry.productId === productId ? updated : entry
+        )));
+        return;
+      }
+    } catch {
+      // Fall back to local state below.
+    }
+
+    setCartItems((currentItems) => currentItems.map((entry) => (
+      entry.productId === productId
+        ? { ...entry, quantity: entry.quantity + 1 }
+        : entry
     )));
   };
 
-  const decreaseQuantity = (productId: string) => {
+  const decreaseQuantity = async (productId: string) => {
+    const item = cartItems.find((entry) => entry.productId === productId);
+
+    try {
+      if (item?.id && item.quantity > 1) {
+        const updated = await updateRemoteCartItem(item.id, item.quantity - 1);
+        setCartItems((currentItems) => currentItems.map((entry) => (
+          entry.productId === productId ? updated : entry
+        )));
+        return;
+      }
+
+      if (item?.id) {
+        await removeRemoteCartItem(item.id);
+      }
+    } catch {
+      // Fall back to local state below.
+    }
+
     setCartItems((currentItems) => currentItems.flatMap((item) => {
       if (item.productId !== productId) return [item];
       const nextQuantity = item.quantity - 1;
@@ -322,7 +620,15 @@ export default function App() {
     }));
   };
 
-  const clearCart = () => {
+  const clearCart = async () => {
+    try {
+      if (currentUser) {
+        await clearRemoteCart();
+      }
+    } catch {
+      // Keep local clear as fallback.
+    }
+
     setCartItems([]);
   };
 
@@ -336,23 +642,56 @@ export default function App() {
     navigate('cart');
   };
 
-  const handleLogin = (event: FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const email = formData.get('email');
-    const password = formData.get('password');
+    const email = String(formData.get('email') ?? '');
+    const password = String(formData.get('password') ?? '');
 
-    if (email !== TEST_USER.email || password !== TEST_USER.password) {
-      setLoginError('Correo o contrasena incorrectos.');
-      return;
+    try {
+      const user = await loginWithBackend(email, password);
+
+      setCurrentUser(user);
+      setCurrentRole(mapApiRoleToUiRole(user.role));
+      if (pendingCartProductId) {
+        try {
+          await addRemoteCartItem(pendingCartProductId, 1);
+          setCartItems(await getRemoteCart());
+        } catch {
+          setCartItems((currentItems) => [...currentItems, { productId: pendingCartProductId, quantity: 1 }]);
+        }
+        setPendingCartProductId(null);
+      }
+      setLoginError('');
+      navigate(hasPendingCheckout ? 'cart' : 'home');
+    } catch (error) {
+      if (email === TEST_USER.email && password === TEST_USER.password) {
+        setCurrentUser({
+          email: TEST_USER.email,
+          name: TEST_USER.name,
+        });
+        if (pendingCartProductId) {
+          setCartItems((currentItems) => [...currentItems, { productId: pendingCartProductId, quantity: 1 }]);
+          setPendingCartProductId(null);
+        }
+        setCurrentRole('customer');
+        setLoginError('');
+        navigate(hasPendingCheckout ? 'cart' : 'home');
+        return;
+      }
+
+      setLoginError(error instanceof Error ? error.message : 'Correo o contrasena incorrectos.');
     }
+  };
 
-    setCurrentUser({
-      email: TEST_USER.email,
-      name: TEST_USER.name,
-    });
+  const handleLogout = () => {
+    logoutFromBackend();
+    setCurrentUser(null);
+    setHasPendingCheckout(false);
+    setPendingCartProductId(null);
+    setCartItems([]);
     setLoginError('');
-    navigate(hasPendingCheckout ? 'cart' : 'home');
+    navigate('home');
   };
 
   const handlePayNow = () => {
@@ -369,15 +708,26 @@ export default function App() {
     clearCart();
   };
 
-  const handleCreatePurchaseRequest = () => {
+  const handleCreatePurchaseRequest = async () => {
     if (!currentUser) {
       setHasPendingCheckout(true);
       navigate('login');
       return;
     }
 
+    try {
+      const request = await createPurchaseRequest();
+      setPurchaseRequests((current) => [request, ...current.filter((entry) => entry.id !== request.id)]);
+      setSelectedPurchaseRequestId(request.id);
+      setCartItems(await getRemoteCart());
+      navigate('purchaseRequestDetail');
+      return;
+    } catch {
+      // Keep the simulated purchase request flow available as fallback.
+    }
+
     const requestItems = getMarketplaceItems(cartItems).filter((item) => {
-      const product = products.find((entry) => entry.id === item.productId);
+      const product = catalogProducts.find((entry) => entry.id === item.productId);
       return product?.availabilityType !== 'CUSTOM_QUOTE';
     });
 
@@ -447,12 +797,23 @@ export default function App() {
     }));
   };
 
-  const handleSellerConfirmRequest = (
+  const handleSellerConfirmRequest = async (
     requestId: string,
     producerId: string,
     readyDate: string,
     observation: string,
   ) => {
+    const request = purchaseRequests.find((entry) => entry.id === requestId);
+    const group = request?.groupsByProducer.find((entry) => entry.producerId === producerId);
+
+    try {
+      if (group?.id) {
+        await confirmPurchaseRequestGroup(group.id, readyDate, observation);
+      }
+    } catch {
+      // Keep local state update as fallback.
+    }
+
     updateRequestAfterProducerAction(requestId, producerId, (group) => ({
       ...group,
       status: 'CONFIRMED',
@@ -462,11 +823,22 @@ export default function App() {
     addNotification('customer', 'Productor confirmo disponibilidad', 'Revisa tu solicitud de compra.', 'purchaseRequests');
   };
 
-  const handleSellerRejectRequest = (
+  const handleSellerRejectRequest = async (
     requestId: string,
     producerId: string,
     observation: string,
   ) => {
+    const request = purchaseRequests.find((entry) => entry.id === requestId);
+    const group = request?.groupsByProducer.find((entry) => entry.producerId === producerId);
+
+    try {
+      if (group?.id) {
+        await rejectPurchaseRequestGroup(group.id, observation);
+      }
+    } catch {
+      // Keep local state update as fallback.
+    }
+
     updateRequestAfterProducerAction(requestId, producerId, (group) => ({
       ...group,
       status: 'REJECTED',
@@ -475,7 +847,17 @@ export default function App() {
     addNotification('customer', 'Productor rechazo disponibilidad', 'Revisa las opciones de tu solicitud.', 'purchaseRequests');
   };
 
-  const handleContinueConfirmed = (requestId: string) => {
+  const handleContinueConfirmed = async (requestId: string) => {
+    try {
+      const request = await continueWithConfirmed(requestId);
+      setPurchaseRequests((current) => current.map((entry) => (
+        entry.id === requestId ? request : entry
+      )));
+      return;
+    } catch {
+      // Keep local state update as fallback.
+    }
+
     setPurchaseRequests((current) => current.map((request) => {
       if (request.id !== requestId) return request;
       const confirmedGroups = request.groupsByProducer.filter((group) => group.status === 'CONFIRMED');
@@ -492,14 +874,46 @@ export default function App() {
     }));
   };
 
-  const handleCancelPurchaseRequest = (requestId: string) => {
+  const handleCancelPurchaseRequest = async (requestId: string) => {
+    try {
+      const request = await cancelPurchaseRequest(requestId);
+      setPurchaseRequests((current) => current.map((entry) => (
+        entry.id === requestId ? request : entry
+      )));
+      addNotification('customer', 'Solicitud cancelada', 'La solicitud de compra fue cancelada.', 'purchaseRequests');
+      return;
+    } catch {
+      // Keep local state update as fallback.
+    }
+
     setPurchaseRequests((current) => current.map((request) => (
       request.id === requestId ? { ...request, status: 'CANCELLED' } : request
     )));
     addNotification('customer', 'Solicitud cancelada', 'La solicitud de compra fue cancelada.', 'purchaseRequests');
   };
 
-  const handlePayPurchaseRequest = (requestId: string, paymentOption: PaymentOption) => {
+  const handlePayPurchaseRequest = async (requestId: string, paymentOption: PaymentOption) => {
+    try {
+      const order = await payPurchaseRequest(requestId, paymentOption);
+      setOrders((current) => [order, ...current.filter((entry) => entry.id !== order.id)]);
+      setLastOrderId(order.id);
+      setSelectedOrderId(order.id);
+      setPurchaseRequests((current) => current.map((entry) => (
+        entry.id === requestId
+          ? { ...entry, status: 'CONVERTED_TO_ORDER', convertedOrderId: order.id }
+          : entry
+      )));
+      try {
+        setSales(await getMySales());
+      } catch {
+        // Sales may not be visible to client role.
+      }
+      navigate('orderSuccess');
+      return;
+    } catch {
+      // Keep local payment flow as fallback.
+    }
+
     const request = purchaseRequests.find((entry) => entry.id === requestId);
     if (!request) return;
 
@@ -527,28 +941,64 @@ export default function App() {
     }));
   };
 
-  const handleMarkSaleInPreparation = (saleId: string) => {
+  const handleMarkSaleInPreparation = async (saleId: string) => {
     const sale = sales.find((entry) => entry.id === saleId);
     if (!sale) return;
 
-    setSales((current) => current.map((entry) => (
-      entry.id === saleId ? { ...entry, status: 'IN_PREPARATION' } : entry
-    )));
-    syncOrderGroupStatus(sale, 'IN_PREPARATION');
+    try {
+      const updatedSale = await markSaleInPreparation(saleId);
+      setSales((current) => current.map((entry) => (
+        entry.id === saleId ? { ...entry, ...updatedSale } : entry
+      )));
+      syncOrderGroupStatus(updatedSale, 'IN_PREPARATION');
+      return;
+    } catch {
+      setSales((current) => current.map((entry) => (
+        entry.id === saleId ? { ...entry, status: 'IN_PREPARATION' } : entry
+      )));
+      syncOrderGroupStatus(sale, 'IN_PREPARATION');
+    }
   };
 
-  const handleMarkSaleReady = (saleId: string) => {
+  const handleMarkSaleReady = async (saleId: string) => {
     const sale = sales.find((entry) => entry.id === saleId);
     if (!sale) return;
 
-    setSales((current) => current.map((entry) => (
-      entry.id === saleId ? { ...entry, status: 'READY_FOR_DISPATCH' } : entry
-    )));
-    syncOrderGroupStatus(sale, 'READY_FOR_DISPATCH');
+    try {
+      const updatedSale = await markSaleReadyForDispatch(saleId);
+      setSales((current) => current.map((entry) => (
+        entry.id === saleId ? { ...entry, ...updatedSale } : entry
+      )));
+      syncOrderGroupStatus(updatedSale, 'READY_FOR_DISPATCH');
+      addNotification('customer', 'Producto marcado como listo', `${sale.producerName} marco productos listos para despacho.`, 'orders');
+      return;
+    } catch {
+      setSales((current) => current.map((entry) => (
+        entry.id === saleId ? { ...entry, status: 'READY_FOR_DISPATCH' } : entry
+      )));
+      syncOrderGroupStatus(sale, 'READY_FOR_DISPATCH');
+    }
+
     addNotification('customer', 'Producto marcado como listo', `${sale.producerName} marco productos listos para despacho.`, 'orders');
   };
 
-  const handleCreateClaim = (orderId: string, reason: string, description: string) => {
+  const handleCreateClaim = async (orderId: string, reason: string, description: string) => {
+    try {
+      const claim = await createRemoteClaim(orderId, mapClaimReasonToApi(reason), description);
+      setClaims((current) => [claim, ...current.filter((entry) => entry.id !== claim.id)]);
+      setOrders((current) => current.map((order) => (
+        order.id === orderId ? { ...order, fundsStatus: 'HELD_BY_CLAIM' } : order
+      )));
+      setSales((current) => current.map((sale) => (
+        sale.orderId === orderId ? { ...sale, fundsStatus: 'HELD_BY_CLAIM', status: 'HELD_BY_CLAIM' } : sale
+      )));
+      addNotification('customer', 'Reclamo registrado', 'El pago permanecera retenido hasta resolver el reclamo.', 'claims');
+      navigate('claims');
+      return;
+    } catch {
+      // Keep local claim creation as fallback.
+    }
+
     const claim: Claim = {
       id: `RCL-${String(claims.length + 1).padStart(3, '0')}`,
       orderId,
@@ -572,10 +1022,20 @@ export default function App() {
     navigate('claims');
   };
 
-  const handleResolveClaim = (claimId: string, status: 'RESOLVED' | 'REJECTED') => {
-    setClaims((current) => current.map((claim) => (
-      claim.id === claimId ? { ...claim, status } : claim
-    )));
+  const handleResolveClaim = async (claimId: string, status: 'RESOLVED' | 'REJECTED') => {
+    try {
+      const claim = status === 'RESOLVED'
+        ? await resolveClaim(claimId)
+        : await rejectClaim(claimId);
+      setClaims((current) => current.map((entry) => (
+        entry.id === claimId ? claim : entry
+      )));
+    } catch {
+      setClaims((current) => current.map((claim) => (
+        claim.id === claimId ? { ...claim, status } : claim
+      )));
+    }
+
     addNotification('customer', 'Reclamo actualizado', `Tu reclamo fue marcado como ${status}.`, 'claims');
   };
 
@@ -584,7 +1044,13 @@ export default function App() {
     navigate('purchaseRequestDetail');
   };
 
-  const handleOpenNotification = (notification: Notification) => {
+  const handleOpenNotification = async (notification: Notification) => {
+    try {
+      await markNotificationAsRead(notification.id);
+    } catch {
+      // Keep local read state as fallback.
+    }
+
     setNotifications((current) => current.map((entry) => (
       entry.id === notification.id ? { ...entry, read: true } : entry
     )));
@@ -594,19 +1060,34 @@ export default function App() {
     }
   };
 
-  const handleMarkAllNotificationsRead = () => {
+  const handleMarkAllNotificationsRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+    } catch {
+      // Keep local read state as fallback.
+    }
+
     setNotifications((current) => current.map((notification) => (
       notification.role === currentRole ? { ...notification, read: true } : notification
     )));
   };
 
-  const trackOrder = (orderId: string) => {
+  const trackOrder = async (orderId: string) => {
     setSelectedOrderId(orderId);
+    try {
+      const order = await getOrderTracking(orderId);
+      setOrders((current) => current.map((entry) => (
+        entry.id === orderId ? { ...entry, ...order } : entry
+      )));
+    } catch {
+      // Keep existing order state as fallback.
+    }
     navigate('orderTracking');
   };
 
-  const selectedProduct = products.find((product) => product.id === selectedProductId);
-  const selectedProducer = getProducerById(selectedProducerId ?? undefined);
+  const selectedProduct = catalogProducts.find((product) => product.id === selectedProductId);
+  const selectedProductProducer = findProducerById(selectedProduct?.producerId);
+  const selectedProducer = findProducerById(selectedProducerId ?? undefined);
   const lastOrder = orders.find((order) => order.id === lastOrderId);
   const selectedOrder = orders.find((order) => order.id === selectedOrderId);
   const selectedPurchaseRequest = purchaseRequests.find((request) => request.id === selectedPurchaseRequestId);
@@ -619,8 +1100,13 @@ export default function App() {
     if (view === 'catalog') {
       return (
         <CatalogView
+          catalogError={catalogError}
+          categories={catalogCategories}
           initialFilter={catalogFilter}
+          isLoadingCatalog={isLoadingCatalog}
           onProductSelect={(productId) => openProduct(productId, 'catalog')}
+          producers={catalogProducers}
+          products={catalogProducts}
         />
       );
     }
@@ -630,6 +1116,7 @@ export default function App() {
         <VerdecitoView
           onProductSelect={(productId) => openProduct(productId, 'verdecito')}
           onShowSustainableProducts={handleShowSustainableProducts}
+          products={catalogProducts}
         />
       );
     }
@@ -642,6 +1129,7 @@ export default function App() {
           onBack={() => navigate(previousView)}
           onProducerSelect={handleProducerSelect}
           product={selectedProduct}
+          producer={selectedProductProducer}
         />
       );
     }
@@ -653,6 +1141,7 @@ export default function App() {
           onBack={() => navigate(previousView)}
           onOpenCatalog={() => handleNavigateToCatalog()}
           onProductSelect={(productId) => openProduct(productId, 'producerProfile')}
+          products={catalogProducts}
         />
       );
     }
@@ -663,6 +1152,7 @@ export default function App() {
           cartItems={cartItems}
           cartNotice={cartNotice}
           currentUser={currentUser}
+          products={catalogProducts}
           onCheckout={startCheckout}
           onDecrease={decreaseQuantity}
           onIncrease={increaseQuantity}
@@ -724,7 +1214,8 @@ export default function App() {
       return (
         <SellerDashboardView
           activeProducerId={activeProducerId}
-          producers={producers}
+          products={catalogProducts}
+          producers={catalogProducers}
           requests={purchaseRequests}
           sales={sales}
           onChangeProducer={setActiveProducerId}
@@ -764,11 +1255,15 @@ export default function App() {
 
     return (
       <HomeView
+        catalogError={catalogError}
+        categories={catalogCategories}
+        isLoadingCatalog={isLoadingCatalog}
         onCategorySelect={handleCategorySelect}
         onNavigate={navigate}
         onOpenCatalog={() => handleNavigateToCatalog()}
         onProductSelect={(productId) => openProduct(productId, 'home')}
         onShowSustainableProducts={handleShowSustainableProducts}
+        products={catalogProducts}
       />
     );
   };
@@ -782,6 +1277,7 @@ export default function App() {
         currentUser={currentUser}
         notificationCount={notificationCount}
         onNavigate={handleNavbarNavigate}
+        onLogout={handleLogout}
         onRoleChange={handleRoleChange}
       />
       <div className="appMain">
