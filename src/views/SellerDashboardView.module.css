@@ -16,74 +16,77 @@
 }
 
 .heading p,
-.card p {
+.card p,
+.productCard p,
+.productForm p {
   color: #667085;
-}
-
-.kicker {
-  color: #e69562;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.toolbar,
-.card,
-.empty,
-.productCard {
-  padding: 22px;
-  border: 1px solid #dfe5dd;
-  border-radius: 24px;
-  background: #fff;
-  box-shadow: 0 16px 40px rgba(15, 47, 95, 0.07);
-}
-
-.toolbar {
-  display: grid;
-  grid-template-columns: minmax(220px, 340px) 1fr;
-  gap: 18px;
-  align-items: end;
-}
-
-.toolbar label {
-  display: grid;
-  gap: 8px;
-}
-
-.toolbar label span {
-  color: #0d2f5f;
-  font-size: 0.82rem;
-  font-weight: 900;
-}
-
-.toolbar select,
-.formGrid input {
-  min-height: 42px;
-  padding: 0 12px;
-  border: 1px solid #d0d5dd;
-  border-radius: 10px;
 }
 
 .tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  padding: 12px;
+  border: 1px solid #dfe5dd;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(15, 47, 95, 0.06);
 }
 
-.tabs button {
+.tabs button,
+.ghostButton {
   min-height: 42px;
   padding: 10px 14px;
   border: 1px solid #dfe5dd;
   border-radius: 999px;
   color: #0d2f5f;
   background: #f8faf6;
+  font: inherit;
   font-weight: 900;
 }
 
 .tabs .active {
   color: #fff;
   background: #0d2f5f;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.summaryGrid article,
+.card,
+.empty,
+.productCard,
+.productForm {
+  padding: 22px;
+  border: 1px solid #dfe5dd;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(15, 47, 95, 0.07);
+}
+
+.summaryGrid article {
+  display: grid;
+  gap: 8px;
+}
+
+.summaryGrid span,
+.moneyGrid span,
+.groupFacts span,
+.productFacts span,
+.productForm label span {
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.summaryGrid strong {
+  color: #0d2f5f;
+  font-size: 2rem;
 }
 
 .list {
@@ -100,7 +103,9 @@
 .card h2,
 .card p,
 .productCard h2,
-.productCard p {
+.productCard p,
+.productForm h2,
+.productForm p {
   margin: 0;
 }
 
@@ -108,7 +113,9 @@
 .productCard h2,
 .items strong,
 .moneyGrid strong,
-.groupFacts strong {
+.groupFacts strong,
+.productFacts strong,
+.productForm h2 {
   color: #0d2f5f;
 }
 
@@ -124,7 +131,8 @@
 
 .items,
 .moneyGrid,
-.groupFacts {
+.groupFacts,
+.productFacts {
   display: grid;
   gap: 10px;
   margin-top: 18px;
@@ -139,24 +147,17 @@
 }
 
 .moneyGrid,
-.groupFacts {
-  grid-template-columns: repeat(4, 1fr);
+.groupFacts,
+.productFacts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .moneyGrid p,
-.groupFacts p {
+.groupFacts p,
+.productFacts p {
   display: grid;
   gap: 4px;
   margin: 0;
-}
-
-.moneyGrid span,
-.groupFacts span,
-.productCard span {
-  color: #667085;
-  font-size: 0.78rem;
-  font-weight: 900;
-  text-transform: uppercase;
 }
 
 .formGrid {
@@ -166,25 +167,129 @@
   margin-top: 18px;
 }
 
-.actions {
+.formGrid input,
+.productForm input,
+.productForm select,
+.productForm textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  color: #0d2f5f;
+  background: #fff;
+  font: inherit;
+}
+
+.productForm textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.actions,
+.formHeader {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 18px;
 }
 
+.formHeader {
+  align-items: start;
+  justify-content: space-between;
+  margin-top: 0;
+}
+
 .productGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
 }
 
+.productCard {
+  display: grid;
+  gap: 14px;
+}
+
+.productImage {
+  display: block;
+  min-height: 170px;
+  border-radius: 14px;
+  background: #e9eef5;
+  background-position: center;
+  background-size: cover;
+}
+
+.productForm {
+  display: grid;
+  gap: 18px;
+}
+
+.formGridWide {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.formGridWide label {
+  display: grid;
+  gap: 8px;
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+.checkGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.checkGrid label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #dfe5dd;
+  border-radius: 12px;
+  color: #0d2f5f;
+  background: #f8faf6;
+  font-weight: 800;
+}
+
+.checkGrid input {
+  width: auto;
+  min-height: auto;
+}
+
+.success,
+.error {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-weight: 900;
+}
+
+.success {
+  color: #2e7d32;
+  background: #eef7e8;
+}
+
+.error {
+  color: #9b2c2c;
+  background: #fff1f1;
+}
+
 @media (max-width: 1040px) {
-  .toolbar,
+  .summaryGrid,
   .formGrid,
   .moneyGrid,
   .groupFacts,
-  .productGrid {
+  .productFacts,
+  .productGrid,
+  .formGridWide,
+  .checkGrid {
     grid-template-columns: 1fr;
   }
 }
@@ -196,13 +301,15 @@
 
   .cardHeader,
   .actions,
-  .tabs {
+  .tabs,
+  .formHeader {
     flex-direction: column;
   }
 
   .formGrid button,
   .actions button,
-  .tabs button {
+  .tabs button,
+  .formHeader button {
     width: 100%;
   }
 }

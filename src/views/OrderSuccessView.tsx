@@ -22,10 +22,6 @@ export default function OrderSuccessView({
         {order && (
           <div className={styles.facts}>
             <p>
-              <span>Numero de pedido</span>
-              <strong>{order.id}</strong>
-            </p>
-            <p>
               <span>Fecha</span>
               <strong>{order.date}</strong>
             </p>

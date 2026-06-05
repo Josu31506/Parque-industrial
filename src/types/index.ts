@@ -1,4 +1,4 @@
-export type ProductType = 'featured' | 'eco';
+export type ProductType = 'featured' | 'eco' | 'normal';
 
 export type AvailabilityType = 'IN_STOCK' | 'MADE_TO_ORDER' | 'CUSTOM_QUOTE';
 
@@ -38,6 +38,20 @@ export type PurchaseRequestGroupStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED';
 
 export type ClaimStatus = 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'REJECTED';
 
+export type QuoteType = 'PRODUCT_BASED' | 'REFERENCE_IMAGE';
+
+export type QuoteStatus =
+  | 'PENDING_REVIEW'
+  | 'IN_COORDINATION'
+  | 'CONSULTING_PRODUCER'
+  | 'PROPOSAL_RECEIVED'
+  | 'RESOLUTION_SENT'
+  | 'ADDED_TO_CART'
+  | 'PAID'
+  | 'CONVERTED_TO_ORDER'
+  | 'REJECTED'
+  | 'EXPIRED';
+
 export type ViewName =
   | 'home'
   | 'catalog'
@@ -53,6 +67,13 @@ export type ViewName =
   | 'purchaseRequests'
   | 'purchaseRequestDetail'
   | 'sellerDashboard'
+  | 'sales'
+  | 'quoteRequest'
+  | 'quoteOptions'
+  | 'quotes'
+  | 'quoteDetail'
+  | 'adminQuotes'
+  | 'adminQuoteDetail'
   | 'claims'
   | 'notifications';
 
@@ -68,6 +89,7 @@ export type TechnicalDetails = {
 
 export type Product = {
   id: string;
+  slug?: string;
   title: string;
   price: string;
   numericPrice: number;
@@ -86,10 +108,13 @@ export type Product = {
   stock?: number;
   estimatedDispatchDays?: number;
   requiresConfirmation?: boolean;
+  customizable?: boolean;
+  isActive?: boolean;
 };
 
 export type Producer = {
   id: string;
+  userId?: string;
   name: string;
   type: string;
   location: string;
@@ -182,7 +207,6 @@ export type Sale = {
   id: string;
   orderId: string;
   producerId: string;
-  producerName?: string;
   producerName: string;
   items: MarketplaceItem[];
   grossAmount: number;
@@ -234,6 +258,66 @@ export type Review = {
   date: string;
 };
 
+export type QuoteResolution = {
+  id: string;
+  quoteRequestId: string;
+  producerId: string;
+  finalTitle: string;
+  finalDescription: string;
+  finalPrice: number;
+  deliveryTime: string;
+  notes?: string;
+  validUntil?: string;
+  createdAt: string;
+  producer?: ApiProducer | null;
+};
+
+export type Quote = {
+  id: string;
+  customerId: string;
+  type: QuoteType;
+  productId?: string;
+  status: QuoteStatus;
+  title: string;
+  description: string;
+  quantity: number;
+  requestedDimensions?: string;
+  requestedMaterial?: string;
+  requestedColor?: string;
+  requestedFinish?: string;
+  deliveryDistrict?: string;
+  referenceImages?: string[];
+  createdAt: string;
+  updatedAt?: string;
+  customer?: ApiUser | null;
+  product?: ApiProduct | null;
+  resolutions: QuoteResolution[];
+};
+
+export type CreateQuoteInput = {
+  type: QuoteType;
+  productId?: string;
+  title: string;
+  description: string;
+  quantity: number;
+  requestedDimensions?: string;
+  requestedMaterial?: string;
+  requestedColor?: string;
+  requestedFinish?: string;
+  deliveryDistrict?: string;
+  referenceImages?: string[];
+};
+
+export type CreateQuoteResolutionInput = {
+  producerId: string;
+  finalTitle: string;
+  finalDescription: string;
+  finalPrice: number;
+  deliveryTime: string;
+  notes?: string;
+  validUntil?: string;
+};
+
 export type ApiUser = {
   id: string;
   name: string;
@@ -264,6 +348,7 @@ export type ApiCategory = {
 
 export type ApiProduct = {
   id: string;
+  slug?: string;
   producerId?: string;
   categoryId?: string;
   title: string;
@@ -272,7 +357,7 @@ export type ApiProduct = {
   numericPrice?: number | string;
   imageUrl: string;
   badge?: string | null;
-  type?: 'FEATURED' | 'ECO' | string;
+  type?: 'FEATURED' | 'ECO' | 'NORMAL' | string;
   availabilityType: AvailabilityType;
   stock?: number | null;
   estimatedDispatchDays?: number | null;
@@ -281,6 +366,7 @@ export type ApiProduct = {
   colors?: string[] | null;
   finish?: string | null;
   customizable?: boolean;
+  requiresConfirmation?: boolean;
   isActive?: boolean;
   producer?: ApiProducer | null;
   category?: ApiCategory | null;
@@ -372,6 +458,7 @@ export type ApiSale = {
   id: string;
   orderId: string;
   producerId: string;
+  producerName?: string;
   status: SaleStatus;
   grossAmount: number;
   commissionAmount: number;
@@ -405,4 +492,40 @@ export type ApiNotification = {
   targetType?: string | null;
   targetId?: string | null;
   createdAt: string;
+};
+
+export type ApiQuoteResolution = {
+  id: string;
+  quoteRequestId: string;
+  producerId: string;
+  finalTitle: string;
+  finalDescription: string;
+  finalPrice: number | string;
+  deliveryTime: string;
+  notes?: string | null;
+  validUntil?: string | null;
+  createdAt: string;
+  producer?: ApiProducer | null;
+};
+
+export type ApiQuote = {
+  id: string;
+  customerId: string;
+  type: QuoteType;
+  productId?: string | null;
+  status: QuoteStatus;
+  title: string;
+  description: string;
+  quantity: number;
+  requestedDimensions?: string | null;
+  requestedMaterial?: string | null;
+  requestedColor?: string | null;
+  requestedFinish?: string | null;
+  deliveryDistrict?: string | null;
+  referenceImages?: unknown;
+  createdAt: string;
+  updatedAt?: string;
+  customer?: ApiUser | null;
+  product?: ApiProduct | null;
+  resolutions?: ApiQuoteResolution[];
 };

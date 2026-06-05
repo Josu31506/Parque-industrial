@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
-import type { AvailabilityType, CartItem, Product, User, ViewName } from '../types';
+import { useState } from 'react';
+import type { CartItem, Product, User, ViewName } from '../types';
 import styles from './CartView.module.css';
 
 type CartViewProps = {
@@ -12,20 +13,23 @@ type CartViewProps = {
   onIncrease: (productId: string) => void;
   onNavigate: (view: ViewName) => void;
   onRemove: (productId: string) => void;
+  onRequestCartQuote: (productId: string, additionalProductTitles: string[]) => void;
   onPayNow: (total: number) => void;
   onRequestPurchase: (total: number) => void;
-  onRequestQuote: () => void;
 };
 
 type CartProductItem = CartItem & { product: Product };
 
 const SHIPPING_COST = 10;
 
-const availabilityLabels: Record<AvailabilityType, string> = {
+const availabilityLabels = {
   IN_STOCK: 'Stock disponible',
   MADE_TO_ORDER: 'Requiere confirmacion',
-  CUSTOM_QUOTE: 'Requiere cotizacion',
 };
+
+const getAvailabilityLabel = (product: Product) => (
+  product.requiresConfirmation ? 'Requiere confirmacion' : availabilityLabels[product.availabilityType] ?? 'Requiere confirmacion'
+);
 
 const getImageStyle = (image?: string): CSSProperties => {
   if (!image) return {};
@@ -44,10 +48,12 @@ export default function CartView({
   onIncrease,
   onNavigate,
   onRemove,
+  onRequestCartQuote,
   onPayNow,
   onRequestPurchase,
-  onRequestQuote,
 }: CartViewProps) {
+  const [showQuoteSelection, setShowQuoteSelection] = useState(false);
+  const [selectedQuoteProductIds, setSelectedQuoteProductIds] = useState<string[]>([]);
   const items: CartProductItem[] = cartItems
     .map((item) => ({
       ...item,
@@ -62,24 +68,43 @@ export default function CartView({
 
   const shipping = items.length > 0 ? SHIPPING_COST : 0;
   const total = subtotal + shipping;
-  const hasMadeToOrder = items.some((item) => item.product.availabilityType === 'MADE_TO_ORDER');
-  const hasCustomQuote = items.some((item) => item.product.availabilityType === 'CUSTOM_QUOTE');
-  const canPayNow = items.length > 0 && !hasMadeToOrder && !hasCustomQuote;
+  const hasRequiresConfirmation = items.some((item) => (
+    item.product.requiresConfirmation === true
+    || item.product.availabilityType === 'MADE_TO_ORDER'
+  ));
+  const canPayNow = items.length > 0 && !hasRequiresConfirmation;
+
+  const openQuoteForProducts = (productsToQuote: Product[]) => {
+    const [primaryProduct, ...additionalProducts] = productsToQuote;
+    if (!primaryProduct) return;
+    onRequestCartQuote(primaryProduct.id, additionalProducts.map((product) => product.title));
+  };
+
+  const toggleQuoteProduct = (productId: string) => {
+    setSelectedQuoteProductIds((current) => (
+      current.includes(productId)
+        ? current.filter((id) => id !== productId)
+        : [...current, productId]
+    ));
+  };
+
+  const handleSelectedQuote = () => {
+    openQuoteForProducts(
+      items
+        .filter((item) => selectedQuoteProductIds.includes(item.product.id))
+        .map((item) => item.product),
+    );
+  };
 
   const handlePrimaryAction = () => {
     if (!items.length) return;
-
-    if (hasCustomQuote) {
-      onRequestQuote();
-      return;
-    }
 
     if (!currentUser) {
       onCheckout();
       return;
     }
 
-    if (hasMadeToOrder) {
+    if (hasRequiresConfirmation) {
       onRequestPurchase(total);
       return;
     }
@@ -87,9 +112,7 @@ export default function CartView({
     onPayNow(total);
   };
 
-  const primaryLabel = hasCustomQuote
-    ? 'Solicitar cotizacion'
-    : hasMadeToOrder
+  const primaryLabel = hasRequiresConfirmation
       ? 'Solicitar compra'
       : currentUser
         ? 'Pagar ahora'
@@ -100,7 +123,6 @@ export default function CartView({
       <section className={`${styles.layout} container`}>
         <div className={styles.cartContent}>
           <div className={styles.heading}>
-            <span className={styles.kicker}></span>
             <h1>Carrito de compras</h1>
             <p>Revisa tus productos seleccionados antes de continuar con el pedido.</p>
           </div>
@@ -121,6 +143,16 @@ export default function CartView({
             <div className={styles.items}>
               {items.map(({ product, quantity }) => (
                 <article className={styles.item} key={product.id}>
+                  {showQuoteSelection && (
+                    <label className={styles.quoteCheckbox}>
+                      <input
+                        type="checkbox"
+                        checked={selectedQuoteProductIds.includes(product.id)}
+                        onChange={() => toggleQuoteProduct(product.id)}
+                      />
+                      <span>Seleccionar para cotizar</span>
+                    </label>
+                  )}
                   <div
                     className={styles.thumb}
                     style={getImageStyle(product.image)}
@@ -132,13 +164,8 @@ export default function CartView({
                     <h2>{product.title}</h2>
                     <strong>{product.price}</strong>
                     <span className={`${styles.availability} ${styles[product.availabilityType]}`}>
-                      {availabilityLabels[product.availabilityType]}
+                      {getAvailabilityLabel(product)}
                     </span>
-                    {product.availabilityType === 'CUSTOM_QUOTE' && (
-                      <p className={styles.itemNote}>
-                        Este producto requiere cotizacion personalizada.
-                      </p>
-                    )}
                   </div>
 
                   <div className={styles.quantity}>
@@ -174,13 +201,7 @@ export default function CartView({
 
           {cartNotice && <p className={styles.notice}>{cartNotice}</p>}
 
-          {hasCustomQuote && (
-            <p className={styles.notice}>
-              El flujo de cotizacion sera gestionado por un asesor en una siguiente fase.
-            </p>
-          )}
-
-          {hasMadeToOrder && !hasCustomQuote && (
+          {hasRequiresConfirmation && (
             <p className={styles.notice}>
               Esta compra requiere confirmacion del productor antes de pagar.
             </p>
@@ -190,6 +211,29 @@ export default function CartView({
             <p className={styles.notice}>
               El pago sera retenido por la plataforma hasta la entrega conforme del producto.
             </p>
+          )}
+
+          {items.length > 0 && (
+            <div className={styles.quoteBox}>
+              <strong>¿Quieres modificar medidas, color o acabado de algun producto?</strong>
+              <button
+                className="accentButton"
+                type="button"
+                onClick={() => setShowQuoteSelection((current) => !current)}
+              >
+                {showQuoteSelection ? 'Ocultar seleccion' : 'Cotizar productos del carrito'}
+              </button>
+              {showQuoteSelection && (
+                <button
+                  className="primaryButton"
+                  type="button"
+                  disabled={selectedQuoteProductIds.length === 0}
+                  onClick={handleSelectedQuote}
+                >
+                  Cotizar productos seleccionados
+                </button>
+              )}
+            </div>
           )}
 
           <button

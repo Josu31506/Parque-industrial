@@ -110,6 +110,22 @@
   box-shadow: 0 22px 50px rgba(15, 47, 95, 0.11);
 }
 
+.quoteCheckbox {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 10px;
+  color: #0d2f5f;
+  font-size: 0.88rem;
+  font-weight: 850;
+}
+
+.quoteCheckbox input {
+  width: 18px;
+  height: 18px;
+  accent-color: #0d2f5f;
+}
+
 .thumb {
   width: 112px;
   height: 92px;
@@ -167,11 +183,6 @@
 .MADE_TO_ORDER {
   color: #8a4a13;
   background: #fff1e7;
-}
-
-.CUSTOM_QUOTE {
-  color: #0d2f5f;
-  background: #eef3f8;
 }
 
 .itemNote {
@@ -332,6 +343,23 @@
   color: #667085;
   font-size: 0.86rem;
   line-height: 1.45;
+}
+
+.quoteBox {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 6px;
+  padding: 14px;
+  border: 1px solid #dfe5dd;
+  border-radius: 14px;
+  color: #0d2f5f;
+  background: #f8faf6;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.quoteBox button {
+  margin-top: 0;
 }
 
 /* Responsive */

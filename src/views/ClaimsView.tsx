@@ -1,4 +1,5 @@
 import type { Claim, Order, Role } from '../types';
+import { getOrderDisplayName } from '../utils/displayNames';
 import styles from './ClaimsView.module.css';
 
 type ClaimsViewProps = {
@@ -18,7 +19,6 @@ export default function ClaimsView({
     <main className={styles.page}>
       <section className={`${styles.content} container`}>
         <div className={styles.heading}>
-          <span className={styles.kicker}>Reclamos</span>
           <h1>{role === 'admin' ? 'Reclamos abiertos' : 'Mis reclamos'}</h1>
           <p>El pago permanece retenido cuando existe un reclamo activo.</p>
         </div>
@@ -33,9 +33,8 @@ export default function ClaimsView({
               return (
                 <article className={styles.card} key={claim.id}>
                   <div>
-                    <span className={styles.code}>{claim.id}</span>
                     <h2>{claim.reason}</h2>
-                    <p>Pedido {claim.orderId} · {claim.createdAt}</p>
+                    <p>{getOrderDisplayName(order)} · {claim.createdAt}</p>
                   </div>
                   <span className={styles.status}>{claim.status}</span>
                   <p className={styles.description}>{claim.description}</p>

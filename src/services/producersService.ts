@@ -5,6 +5,7 @@ import { mapApiProductToProduct } from './productsService';
 export function mapApiProducerToProducer(apiProducer: ApiProducer): Producer {
   return {
     id: apiProducer.id,
+    userId: apiProducer.userId,
     name: apiProducer.businessName,
     type: apiProducer.type,
     location: apiProducer.location,

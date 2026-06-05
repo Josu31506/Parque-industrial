@@ -35,7 +35,6 @@ export default function SupportView() {
     <main className={styles.page}>
       <section className={`${styles.content} container`}>
         <div className={styles.heading}>
-          <span className={styles.kicker}>Soporte</span>
           <h1>Atencion al cliente</h1>
           <p>Estamos aqui para ayudarte antes, durante y despues de tu compra.</p>
         </div>

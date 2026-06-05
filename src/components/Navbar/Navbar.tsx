@@ -1,6 +1,5 @@
-import type { ChangeEvent, FormEvent } from 'react';
 import logo2 from '../../assets/logo2.jpeg';
-import type { Role, User, ViewName } from '../../types';
+import type { ApiRole, User, ViewName } from '../../types';
 import styles from './Navbar.module.css';
 
 type NavItem =
@@ -10,13 +9,17 @@ type NavItem =
 type NavbarProps = {
   activeView?: ViewName;
   cartCount?: number;
-  currentRole: Role;
   currentUser: User | null;
   notificationCount?: number;
   onNavigate: (view: ViewName) => void;
   onLogout?: () => void;
-  onRoleChange: (role: Role) => void;
 };
+
+const publicNav: NavItem[] = [
+  { label: 'Inicio', view: 'home' },
+  { label: 'Catalogo', view: 'catalog' },
+  { label: 'Verdecito', view: 'verdecito' },
+];
 
 const customerNav: NavItem[] = [
   { label: 'Inicio', view: 'home' },
@@ -25,6 +28,7 @@ const customerNav: NavItem[] = [
   { label: 'Carrito', view: 'cart' },
   { label: 'Pedidos', view: 'orders' },
   { label: 'Solicitudes', view: 'purchaseRequests' },
+  { label: 'Cotizaciones', view: 'quotes' },
   { label: 'Notificaciones', view: 'notifications' },
 ];
 
@@ -37,26 +41,30 @@ const sellerNav: NavItem[] = [
 
 const adminNav: NavItem[] = [
   { label: 'Inicio', view: 'home' },
+  { label: 'Catalogo', view: 'catalog' },
   { label: 'Reclamos', view: 'claims' },
+  { label: 'Gestión de cotizaciones', view: 'adminQuotes' },
   { label: 'Notificaciones', view: 'notifications' },
 ];
 
-const getNavItems = (role: Role) => {
-  if (role === 'seller') return sellerNav;
-  if (role === 'admin') return adminNav;
+const getNavItems = (role: ApiRole | undefined) => {
+  if (!role) return publicNav;
+  if (role === 'SELLER') return sellerNav;
+  if (role === 'ADMIN' || role === 'ADVISOR') return adminNav;
   return customerNav;
 };
 
 export default function Navbar({
   activeView = 'home',
   cartCount = 0,
-  currentRole,
   currentUser,
   notificationCount = 0,
   onNavigate,
   onLogout,
-  onRoleChange,
 }: NavbarProps) {
+  const navItems = getNavItems(currentUser?.role);
+  const accountView: ViewName = currentUser?.role === 'CLIENT' ? 'orders' : 'notifications';
+
   const handleNavClick = (item: NavItem) => {
     if (item.view) {
       onNavigate(item.view);
@@ -74,14 +82,6 @@ export default function Navbar({
     document.getElementById(item.anchor)?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-  };
-
-  const handleRoleChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    onRoleChange(event.target.value as Role);
-  };
-
   return (
     <header className={styles.header}>
       <nav className={`${styles.navbar} container`} aria-label="Navegacion principal">
@@ -95,7 +95,7 @@ export default function Navbar({
         </button>
 
         <ul className={styles.menu}>
-          {getNavItems(currentRole).map((item) => (
+          {navItems.map((item) => (
             <li key={item.label}>
               <button
                 className={item.view === activeView ? styles.active : undefined}
@@ -111,23 +111,12 @@ export default function Navbar({
         </ul>
 
         <div className={styles.actions}>
-          
-
-          <label className={styles.roleSelect}>
-            <span>Rol</span>
-            <select value={currentRole} onChange={handleRoleChange}>
-              <option value="customer">Cliente</option>
-              <option value="seller">Productor</option>
-              <option value="admin">Admin/Asesor</option>
-            </select>
-          </label>
-
           <button
             className="primaryButton"
             type="button"
-            onClick={() => onNavigate(currentUser ? 'orders' : 'login')}
+            onClick={() => onNavigate(currentUser ? accountView : 'login')}
           >
-            {currentUser ? 'Mi cuenta' : 'Ingresar'}
+            {currentUser ? currentUser.name || 'Mi cuenta' : 'Ingresar'}
           </button>
 
           {currentUser && onLogout && (

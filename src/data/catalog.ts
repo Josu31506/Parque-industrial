@@ -121,7 +121,7 @@ export const products: Product[] = [
     numericPrice: 2150,
     producerId: 'muebles-ves',
     description: 'Cama queen tapizada con cabecera acolchada, creada para dormitorios modernos que buscan confort y durabilidad.',
-    availabilityType: 'CUSTOM_QUOTE',
+    availabilityType: 'MADE_TO_ORDER',
     estimatedDispatchDays: 16,
     requiresConfirmation: true,
     technicalDetails: {

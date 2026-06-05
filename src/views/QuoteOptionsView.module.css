@@ -1,0 +1,90 @@
+.page {
+  min-height: calc(100vh - 180px);
+  padding: 64px 0;
+  background: #f7fafc;
+}
+
+.content {
+  display: grid;
+  gap: 26px;
+}
+
+.heading {
+  max-width: 760px;
+}
+
+.kicker,
+.cardNumber {
+  color: #e59866;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.heading h1,
+.card h2 {
+  color: #0f2c59;
+}
+
+.heading h1 {
+  margin: 8px 0 10px;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+}
+
+.heading p,
+.card p {
+  color: #5f6f84;
+  line-height: 1.65;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.card {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 26px;
+  border: 1px solid rgba(15, 44, 89, 0.1);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(15, 44, 89, 0.07);
+}
+
+.card h2,
+.card p {
+  margin: 0;
+}
+
+.card button {
+  justify-self: start;
+  margin-top: 8px;
+}
+
+.backButton {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  color: #0f2c59;
+  background: transparent;
+  font: inherit;
+  font-weight: 900;
+}
+
+@media (max-width: 680px) {
+  .page {
+    padding: 44px 0;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card button {
+    width: 100%;
+  }
+}

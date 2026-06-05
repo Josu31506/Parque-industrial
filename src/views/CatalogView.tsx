@@ -12,6 +12,7 @@ type CatalogViewProps = {
   onProductSelect: (productId: string) => void;
   producers: Producer[];
   products: Product[];
+  quoteMode?: boolean;
 };
 
 const normalize = (value: string) => value.trim().toLowerCase();
@@ -24,6 +25,7 @@ export default function CatalogView({
   onProductSelect,
   producers,
   products,
+  quoteMode = false,
 }: CatalogViewProps) {
   const [query, setQuery] = useState(initialFilter?.query ?? '');
   const [category, setCategory] = useState(initialFilter?.category ?? '');
@@ -56,6 +58,12 @@ export default function CatalogView({
       : true;
 
     return matchesQuery && matchesCategory && matchesType && matchesProducer;
+  }).sort((left, right) => {
+    if (!quoteMode) return 0;
+    const quotePriority = (product: Product) => (
+      product.customizable ? 0 : 1
+    );
+    return quotePriority(left) - quotePriority(right);
   });
 
   const handleQueryChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -73,11 +81,15 @@ export default function CatalogView({
     <main className={styles.page}>
       <section className={`${styles.content} container`}>
         <div className={styles.heading}>
-          <span className={styles.kicker}></span>
           <h1>Catalogo de productos</h1>
           <p>
             Encuentra muebles, decoracion y productos sostenibles de productores locales.
           </p>
+          {quoteMode && (
+            <p className={styles.modeNotice}>
+              Selecciona el producto que deseas personalizar. Mostramos primero los productos preparados para cotizacion.
+            </p>
+          )}
         </div>
 
         <div className={styles.filters} aria-label="Filtros del catalogo">

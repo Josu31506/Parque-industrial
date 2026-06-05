@@ -41,8 +41,8 @@ export default function ProducerProfileView({
           </div>
 
           <div>
-            <span className={styles.kicker}>{producer.type}</span>
             <h1>{producer.name}</h1>
+            <p>{producer.type}</p>
             <p className={styles.location}>{producer.location}</p>
             <p className={styles.description}>{producer.description}</p>
             <div className={styles.rating}>★★★★★ <span>4.8 valoracion general</span></div>

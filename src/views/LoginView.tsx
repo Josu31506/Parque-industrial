@@ -34,6 +34,7 @@ export default function LoginView({ error, onLogin }: LoginViewProps) {
           <strong>cliente@demo.com / Cliente123456</strong>
           <strong>productor1@demo.com / Productor123456</strong>
           <strong>admin@parqueindustrial.com / Admin123456</strong>
+          <strong>asesor@parqueindustrial.com / Asesor123456</strong>
         </div>
       </form>
     </main>

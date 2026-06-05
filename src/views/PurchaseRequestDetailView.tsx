@@ -40,8 +40,7 @@ export default function PurchaseRequestDetailView({
     <main className={styles.page}>
       <section className={`${styles.content} container`}>
         <div className={styles.heading}>
-          <span className={styles.kicker}>Solicitud</span>
-          <h1>Solicitud {request.id}</h1>
+          <h1>Detalle de solicitud de compra</h1>
           <p>Estado general: <strong>{request.status}</strong></p>
         </div>
 

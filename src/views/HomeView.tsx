@@ -13,6 +13,7 @@ type HomeViewProps = {
   onOpenCatalog: () => void;
   onProductSelect: (productId: string) => void;
   onNavigate: (view: ViewName) => void;
+  onRequestQuote: () => void;
   onShowSustainableProducts: () => void;
   products: Product[];
 };
@@ -32,14 +33,52 @@ type HeroSlide = {
   secondaryAction?: () => void;
 };
 
+type CategoryWithOptionalImageUrl = Category & {
+  imageUrl?: string | null;
+  icon?: string | null;
+};
+
 const homeHeroImage =
   'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=1200';
-  
+
 const quoteHeroImage =
   'https://conkansei.com/wp-content/uploads/2020/12/proyecto-bricolaje.jpg';
 
 const verdecitoHeroImage =
   'https://miroytengo.es/blog/wp-content/uploads/2-24.jpg';
+
+const categoryImageFallbacks: Record<string, string> = {
+  comedores:
+    'https://images.unsplash.com/photo-1631048500063-aac1c3565d4c?w=600&auto=format&fit=crop&q=60',
+  salas:
+    'https://plus.unsplash.com/premium_photo-1661926736128-f2b643f91d1e?w=600&auto=format&fit=crop&q=60',
+  dormitorios:
+    'https://images.pexels.com/photos/12277297/pexels-photo-12277297.jpeg',
+  oficinas:
+    'https://plus.unsplash.com/premium_photo-1681487178876-a1156952ec60?w=600&auto=format&fit=crop&q=60',
+  decoracion:
+    'https://cdn.shopify.com/s/files/1/0051/1049/7395/files/4Q9A4895_b35d2940-d334-40e8-ad1e-ab51b73e45d8.jpg?v=1711367681',
+};
+
+const normalizeCategoryName = (name: string) =>
+  name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const getCategoryImage = (category: CategoryWithOptionalImageUrl) => {
+  const normalizedName = normalizeCategoryName(category.name);
+  const fallbackImage = categoryImageFallbacks[normalizedName];
+
+  return (
+    category.imageUrl ||
+    fallbackImage ||
+    category.icon ||
+    category.image ||
+    ''
+  );
+};
 
 export default function HomeView({
   catalogError,
@@ -49,80 +88,93 @@ export default function HomeView({
   onOpenCatalog,
   onProductSelect,
   onNavigate,
+  onRequestQuote,
   onShowSustainableProducts,
   products,
 }: HomeViewProps) {
   const [activeSlide, setActiveSlide] = useState(0);
   const [carouselCycle, setCarouselCycle] = useState(0);
-  const [quoteMessage, setQuoteMessage] = useState('');
 
-  const heroSlides: HeroSlide[] = useMemo(() => [
-    {
-      id: 'catalog',
-      eyebrow: 'Compra local, diseño directo',
-      title: 'Encuentra tu mueble ideal',
-      description:
-        'Directo del Parque Industrial: descubre talleres, tiendas y fabricantes locales con propuestas listas para transformar tus espacios.',
-      backgroundImage: homeHeroImage,
-      overlay: `linear-gradient(
-        90deg,
-        rgba(9, 28, 58, 0.84) 0%,
-        rgba(9, 28, 58, 0.68) 42%,
-        rgba(9, 28, 58, 0.34) 72%,
-        rgba(9, 28, 58, 0.12) 100%
-      )`,
-      showSearch: true,
-      centerActions: true,
-      primaryLabel: 'Ver catálogo',
-      primaryAction: onOpenCatalog,
-    },
-    {
-      id: 'quote',
-      eyebrow: 'Cotizaciones personalizadas',
-      title: 'Diseña el mueble que necesitas',
-      description:
-        'Solicita muebles a medida, modifica dimensiones, elige colores o envía una referencia para recibir una propuesta personalizada.',
-      backgroundImage: quoteHeroImage,
-      overlay: `linear-gradient(
-        90deg,
-        rgba(9, 28, 58, 0.90) 0%,
-        rgba(9, 28, 58, 0.74) 46%,
-        rgba(9, 28, 58, 0.42) 76%,
-        rgba(9, 28, 58, 0.18) 100%
-      )`,
-      primaryLabel: 'Solicitar cotización',
-      secondaryLabel: 'Ver productos',
-      primaryAction: () => setQuoteMessage('Este flujo será gestionado por un asesor en una siguiente fase.'),
-      secondaryAction: onOpenCatalog,
-    },
-    {
-      id: 'verdecito',
-      eyebrow: 'Línea sostenible',
-      title: 'Verdecito',
-      description:
-        'Descubre productos sostenibles, hechos con propósito y pensados para durar.',
-      backgroundImage: verdecitoHeroImage,
-      overlay: `linear-gradient(
-        90deg,
-        rgba(9, 28, 58, 0.82) 0%,
-        rgba(15, 74, 37, 0.66) 44%,
-        rgba(15, 74, 37, 0.34) 74%,
-        rgba(15, 74, 37, 0.12) 100%
-      )`,
-      primaryLabel: 'Ver sostenibles',
-      secondaryLabel: 'Conoce Verdecito',
-      primaryAction: onShowSustainableProducts,
-      secondaryAction: () => onNavigate('verdecito'),
-    },
-  ], [onNavigate, onOpenCatalog, onShowSustainableProducts]);
+  const displayCategories = useMemo(
+    () =>
+      categories.map((category) => ({
+        ...category,
+        image: getCategoryImage(category as CategoryWithOptionalImageUrl),
+        rating: category.rating ?? 4.8,
+        reviews: category.reviews ?? 80,
+      })),
+    [categories],
+  );
+
+  const heroSlides: HeroSlide[] = useMemo(
+    () => [
+      {
+        id: 'catalog',
+        eyebrow: 'Compra local, diseño directo',
+        title: 'Encuentra tu mueble ideal',
+        description:
+          'Directo del Parque Industrial: descubre talleres, tiendas y fabricantes locales con propuestas listas para transformar tus espacios.',
+        backgroundImage: homeHeroImage,
+        overlay: `linear-gradient(
+          90deg,
+          rgba(9, 28, 58, 0.84) 0%,
+          rgba(9, 28, 58, 0.68) 42%,
+          rgba(9, 28, 58, 0.34) 72%,
+          rgba(9, 28, 58, 0.12) 100%
+        )`,
+        showSearch: true,
+        centerActions: true,
+        primaryLabel: 'Ver catálogo',
+        primaryAction: onOpenCatalog,
+      },
+      {
+        id: 'quote',
+        eyebrow: 'Cotizaciones personalizadas',
+        title: 'Diseña el mueble que necesitas',
+        description:
+          'Solicita muebles a medida, modifica dimensiones, elige colores o envía una referencia para recibir una propuesta personalizada.',
+        backgroundImage: quoteHeroImage,
+        overlay: `linear-gradient(
+          90deg,
+          rgba(9, 28, 58, 0.90) 0%,
+          rgba(9, 28, 58, 0.74) 46%,
+          rgba(9, 28, 58, 0.42) 76%,
+          rgba(9, 28, 58, 0.18) 100%
+        )`,
+        primaryLabel: 'Solicitar cotización',
+        secondaryLabel: 'Ver productos',
+        primaryAction: onRequestQuote,
+        secondaryAction: onOpenCatalog,
+      },
+      {
+        id: 'verdecito',
+        eyebrow: 'Línea sostenible',
+        title: 'Verdecito',
+        description:
+          'Descubre productos sostenibles, hechos con propósito y pensados para durar.',
+        backgroundImage: verdecitoHeroImage,
+        overlay: `linear-gradient(
+          90deg,
+          rgba(9, 28, 58, 0.82) 0%,
+          rgba(15, 74, 37, 0.66) 44%,
+          rgba(15, 74, 37, 0.34) 74%,
+          rgba(15, 74, 37, 0.12) 100%
+        )`,
+        primaryLabel: 'Ver sostenibles',
+        secondaryLabel: 'Conoce Verdecito',
+        primaryAction: onShowSustainableProducts,
+        secondaryAction: () => onNavigate('verdecito'),
+      },
+    ],
+    [onNavigate, onOpenCatalog, onRequestQuote, onShowSustainableProducts],
+  );
 
   const slide = heroSlides[activeSlide];
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
       setActiveSlide((currentSlide) => (currentSlide + 1) % heroSlides.length);
-      setQuoteMessage('');
-    }, 5000);
+    }, 15000);
 
     return () => window.clearInterval(intervalId);
   }, [heroSlides.length, carouselCycle]);
@@ -132,7 +184,6 @@ export default function HomeView({
   };
 
   const resetCarouselTimer = () => {
-    setQuoteMessage('');
     setCarouselCycle((currentCycle) => currentCycle + 1);
   };
 
@@ -142,9 +193,9 @@ export default function HomeView({
   };
 
   const goToPreviousSlide = () => {
-    setActiveSlide((currentSlide) => (
-      currentSlide === 0 ? heroSlides.length - 1 : currentSlide - 1
-    ));
+    setActiveSlide((currentSlide) =>
+      currentSlide === 0 ? heroSlides.length - 1 : currentSlide - 1,
+    );
     resetCarouselTimer();
   };
 
@@ -159,7 +210,9 @@ export default function HomeView({
         <div className={styles.heroBackdrop} aria-hidden="true">
           {heroSlides.map((item, index) => (
             <div
-              className={`${styles.heroSlide} ${index === activeSlide ? styles.activeSlide : ''}`}
+              className={`${styles.heroSlide} ${
+                index === activeSlide ? styles.activeSlide : ''
+              }`}
               style={{
                 backgroundImage: `${item.overlay}, url(${item.backgroundImage})`,
               }}
@@ -185,29 +238,45 @@ export default function HomeView({
           <p className={styles.heroCopy}>{slide.description}</p>
 
           {slide.showSearch && (
-            <form className={styles.heroSearch} role="search" onSubmit={handleSubmit}>
+            <form
+              className={styles.heroSearch}
+              role="search"
+              onSubmit={handleSubmit}
+            >
               <input
                 type="search"
                 placeholder="Busca salas, comedores, dormitorios..."
                 aria-label="Buscar muebles"
               />
-              <button className="accentButton" type="submit">Buscar</button>
+              <button className="accentButton" type="submit">
+                Buscar
+              </button>
             </form>
           )}
 
-          <div className={`${styles.heroActions} ${slide.centerActions ? styles.centerActions : ''}`}>
-          <button className="primaryButton" type="button" onClick={slide.primaryAction}>
-            {slide.primaryLabel}
-          </button>
-
-          {slide.secondaryLabel && slide.secondaryAction && (
-            <button className="accentButton" type="button" onClick={slide.secondaryAction}>
-              {slide.secondaryLabel}
+          <div
+            className={`${styles.heroActions} ${
+              slide.centerActions ? styles.centerActions : ''
+            }`}
+          >
+            <button
+              className="primaryButton"
+              type="button"
+              onClick={slide.primaryAction}
+            >
+              {slide.primaryLabel}
             </button>
-          )}
-        </div>
 
-          {quoteMessage && <p className={styles.heroNotice}>{quoteMessage}</p>}
+            {slide.secondaryLabel && slide.secondaryAction && (
+              <button
+                className="accentButton"
+                type="button"
+                onClick={slide.secondaryAction}
+              >
+                {slide.secondaryLabel}
+              </button>
+            )}
+          </div>
 
           <div className={styles.carouselDots} aria-label="Seleccionar slide">
             {heroSlides.map((item, index) => (
@@ -237,21 +306,25 @@ export default function HomeView({
       <section className="section" id="categorias">
         <div className="container">
           <div className="sectionHeader">
-            <h2>Categorias mas populares</h2>
+            <h2>Categorías más populares</h2>
             <button className="sectionLink" type="button" onClick={onOpenCatalog}>
               Ver todas ›
             </button>
           </div>
 
-          <div className={styles.categoryGrid}>
-            {categories.map((category) => (
-              <CategoryCard
-                key={category.name}
-                {...category}
-                onClick={() => onCategorySelect(category.name)}
-              />
-            ))}
-          </div>
+          {isLoadingCatalog && <p>Cargando categorías...</p>}
+
+          {!isLoadingCatalog && (
+            <div className={styles.categoryGrid}>
+              {displayCategories.map((category) => (
+                <CategoryCard
+                  key={category.id ?? category.name}
+                  {...category}
+                  onClick={() => onCategorySelect(category.name)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -260,7 +333,7 @@ export default function HomeView({
           <div className="sectionHeader">
             <h2>Explora nuestros productos</h2>
             <button className="sectionLink" type="button" onClick={onOpenCatalog}>
-              Ver catalogo completo ›
+              Ver catálogo completo ›
             </button>
           </div>
 
@@ -295,9 +368,11 @@ export default function HomeView({
             <input
               type="email"
               placeholder="tu.correo@ejemplo.com"
-              aria-label="Correo electronico"
+              aria-label="Correo electrónico"
             />
-            <button className="accentButton" type="submit">Suscribirme</button>
+            <button className="accentButton" type="submit">
+              Suscribirme
+            </button>
           </form>
         </div>
       </section>

@@ -24,11 +24,11 @@ const mapRequestItem = (item: ApiPurchaseRequestItem): MarketplaceItem => {
   return {
     productId: item.productId,
     quantity: item.quantity,
-    title: item.product?.title ?? 'Producto',
+    title: item.product?.title ?? 'Producto no disponible',
     price: `S/. ${unitPrice.toLocaleString('es-PE')}`,
     numericPrice: unitPrice,
     producerId: item.producerId,
-    producerName: item.producer?.businessName ?? item.product?.producer?.businessName ?? 'Productora local',
+    producerName: item.producer?.businessName ?? item.product?.producer?.businessName ?? 'Productor no asignado',
   };
 };
 
@@ -38,7 +38,7 @@ const mapRequestGroup = (
 ): PurchaseRequestGroup => ({
   id: group.id,
   producerId: group.producerId,
-  producerName: group.producer?.businessName ?? 'Productora local',
+  producerName: group.producer?.businessName ?? 'Productor no asignado',
   items: items.filter((item) => item.producerId === group.producerId),
   status: group.status,
   readyDate: formatDate(group.readyDate),

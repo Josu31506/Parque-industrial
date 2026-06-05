@@ -18,7 +18,6 @@ export default function PurchaseRequestsView({
     <main className={styles.page}>
       <section className={`${styles.content} container`}>
         <div className={styles.heading}>
-          <span className={styles.kicker}></span>
           <h1>Mis solicitudes de compra</h1>
           <p>Revisa las compras que esperan confirmacion de los productores.</p>
         </div>
@@ -33,10 +32,9 @@ export default function PurchaseRequestsView({
           </div>
         ) : (
           <div className={styles.list}>
-            {requests.map((request, index) => (
+            {requests.map((request) => (
               <article className={styles.card} key={request.id}>
                 <div>
-                  <span className={styles.code}>Solicitud SC-{String(index + 1).padStart(3, '0')}</span>
                   <h2>{request.items.length} productos solicitados</h2>
                   <p>Creada el {request.createdAt}</p>
                 </div>

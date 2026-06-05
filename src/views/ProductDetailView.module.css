@@ -265,6 +265,19 @@
   font-weight: 800;
 }
 
+.stockNotice {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(229, 152, 102, 0.45);
+  border-radius: 8px;
+  color: #83492f;
+  background: #fff8f3;
+  font-weight: 900;
+}
+
 .ecoPage .confirmation {
   color: var(--color-eco);
   background: var(--color-eco-soft);

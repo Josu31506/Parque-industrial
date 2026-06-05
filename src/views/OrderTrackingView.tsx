@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import type { Order, OrderStatus, Sale, ViewName } from '../types';
+import { getOrderDisplayName } from '../utils/displayNames';
 import styles from './OrderTrackingView.module.css';
 
 type OrderTrackingViewProps = {
@@ -60,8 +61,6 @@ export default function OrderTrackingView({
     <main className={styles.page}>
       <section className={`${styles.content} container`}>
         <div className={styles.heading}>
-          <span className={styles.kicker}>Seguimiento</span>
-
           <h1>Estado de tu pedido</h1>
 
           <p>
@@ -77,7 +76,7 @@ export default function OrderTrackingView({
               <div className={styles.summary}>
                 <div>
                   <span className={styles.label}>Pedido</span>
-                  <strong>{order.id}</strong>
+                  <strong>{getOrderDisplayName(order)}</strong>
                 </div>
 
                 <div>

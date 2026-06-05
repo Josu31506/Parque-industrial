@@ -26,7 +26,6 @@ export default function NotificationsView({
     <main className={styles.page}>
       <section className={`${styles.content} container`}>
         <div className={styles.heading}>
-          <span className={styles.kicker}></span>
           <h1>Notificaciones de {roleLabels[role]}</h1>
           <p>Eventos simulados del flujo de compra, venta y reclamos.</p>
         </div>

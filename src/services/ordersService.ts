@@ -31,25 +31,25 @@ const mapOrderItem = (item: ApiOrderItem): MarketplaceItem => {
   return {
     productId: item.productId,
     quantity: item.quantity,
-    title: item.product?.title ?? 'Producto',
+    title: item.product?.title ?? 'Producto no disponible',
     price: `S/. ${unitPrice.toLocaleString('es-PE')}`,
     numericPrice: unitPrice,
     producerId: item.producerId,
-    producerName: item.producer?.businessName ?? item.product?.producer?.businessName ?? 'Productora local',
+    producerName: item.producer?.businessName ?? item.product?.producer?.businessName ?? 'Productor no asignado',
   };
 };
 
 const mapSaleGroup = (sale: ApiSale): OrderProducerGroup => ({
   producerId: sale.producerId,
-  producerName: sale.producerName ?? sale.producer?.businessName ?? 'Productora local',
+  producerName: sale.producerName ?? sale.producer?.businessName ?? 'Productor no asignado',
   items: (sale.items ?? []).map((item) => ({
     productId: item.productId,
     quantity: item.quantity,
-    title: item.product?.title ?? 'Producto',
+    title: item.product?.title ?? 'Producto no disponible',
     price: `S/. ${numberValue(item.unitPrice).toLocaleString('es-PE')}`,
     numericPrice: numberValue(item.unitPrice),
     producerId: sale.producerId,
-    producerName: sale.producerName ?? sale.producer?.businessName ?? 'Productora local',
+    producerName: sale.producerName ?? sale.producer?.businessName ?? 'Productor no asignado',
   })),
   status: sale.status,
   readyDate: formatDate(sale.readyDate),

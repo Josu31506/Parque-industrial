@@ -1,10 +1,18 @@
 import type { CSSProperties } from 'react';
 import type { Product } from '../../types';
+import { getCategoryDisplayName, getProducerDisplayName } from '../../utils/displayNames';
 import styles from './ProductCard.module.css';
 
 type ProductCardProps = Pick<
   Product,
-  'badge' | 'image' | 'storeName' | 'title' | 'rating' | 'price' | 'oldPrice'
+  | 'badge'
+  | 'category'
+  | 'image'
+  | 'oldPrice'
+  | 'price'
+  | 'rating'
+  | 'storeName'
+  | 'title'
 > & {
   onClick?: () => void;
 };
@@ -22,6 +30,7 @@ const getImageStyle = (image?: string): CSSProperties => {
 
 export default function ProductCard({
   badge,
+  category,
   image,
   storeName,
   title,
@@ -51,18 +60,19 @@ export default function ProductCard({
       </button>
 
       <div className={styles.info}>
-        <p className={styles.storeName}>{storeName}</p>
+        <p className={styles.storeName}>{getProducerDisplayName({ name: storeName })}</p>
+        <p className={styles.category}>{getCategoryDisplayName(undefined, category)}</p>
         <button className={styles.titleButton} type="button" onClick={onClick}>
           <h3>{title}</h3>
         </button>
         <p className={styles.rating}>
-          ★★★★★ <span>{rating}</span>
+          ***** <span>{rating}</span>
         </p>
         <div className={styles.priceRow}>
           <span className={styles.price}>{price}</span>
           {oldPrice && <span className={styles.oldPrice}>{oldPrice}</span>}
         </div>
-        <button className="primaryButton" type="button" onClick={onClick}>Vista rapida</button>
+        <button className="primaryButton" type="button" onClick={onClick}>Ver producto</button>
       </div>
     </article>
   );

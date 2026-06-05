@@ -9,14 +9,14 @@ const formatDate = (value: string | Date | null | undefined) => {
 const numberValue = (value: number | string | null | undefined) => Number(value ?? 0);
 
 export const mapApiSaleToSale = (sale: ApiSale): Sale => {
-  const producerName = sale.producerName ?? sale.producer?.businessName ?? 'Productora local';
+  const producerName = sale.producerName ?? sale.producer?.businessName ?? 'Productor no asignado';
   const items: MarketplaceItem[] = (sale.items ?? []).map((item) => {
     const unitPrice = numberValue(item.unitPrice);
 
     return {
       productId: item.productId,
       quantity: item.quantity,
-      title: item.product?.title ?? 'Producto',
+      title: item.product?.title ?? 'Producto no disponible',
       price: `S/. ${unitPrice.toLocaleString('es-PE')}`,
       numericPrice: unitPrice,
       producerId: sale.producerId,

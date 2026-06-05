@@ -63,6 +63,12 @@
   font-weight: 800;
 }
 
+.category {
+  margin: -4px 0 8px;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
 .info h3 {
   min-height: 76px;
   margin: 0;

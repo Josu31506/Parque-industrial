@@ -18,7 +18,6 @@ export default function OrdersView({
     <main className={styles.page}>
       <section className={`${styles.content} container`}>
         <div className={styles.heading}>
-          <span className={styles.kicker}></span>
           <h1>Mis pedidos</h1>
           <p>Consulta el estado de tus pedidos y revisa su seguimiento.</p>
         </div>

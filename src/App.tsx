@@ -28,7 +28,12 @@ import {
 import { getNotifications, markAllNotificationsAsRead, markNotificationAsRead } from './services/notificationsService';
 import { getMyOrders, getOrderTracking } from './services/ordersService';
 import { getProducers as fetchProducers } from './services/producersService';
-import { getProducts as fetchProducts } from './services/productsService';
+import {
+  createProduct as createRemoteProduct,
+  getProducts as fetchProducts,
+  updateProduct as updateRemoteProduct,
+  type ProductFormInput,
+} from './services/productsService';
 import {
   cancelPurchaseRequest,
   confirmPurchaseRequestGroup,
@@ -40,6 +45,8 @@ import {
 } from './services/purchaseRequestsService';
 import {
   getMySales,
+  markSaleDelivered,
+  markSaleDispatched,
   markSaleInPreparation,
   markSaleReadyForDispatch,
 } from './services/salesService';
@@ -57,6 +64,7 @@ import type {
   Product,
   PurchaseRequest,
   PurchaseRequestGroup,
+  QuoteType,
   Role,
   Sale,
   SaleStatus,
@@ -70,28 +78,49 @@ import ClaimsView from './views/ClaimsView';
 import HomeView from './views/HomeView';
 import LoginView from './views/LoginView';
 import NotificationsView from './views/NotificationsView';
+import AdminQuoteDetailView from './views/AdminQuoteDetailView';
+import AdminQuotesView from './views/AdminQuotesView';
 import OrdersView from './views/OrdersView';
 import OrderSuccessView from './views/OrderSuccessView';
 import OrderTrackingView from './views/OrderTrackingView';
 import ProducerProfileView from './views/ProducerProfileView';
 import ProductDetailView from './views/ProductDetailView';
+import QuoteDetailView from './views/QuoteDetailView';
+import QuoteOptionsView from './views/QuoteOptionsView';
+import QuoteRequestView from './views/QuoteRequestView';
 import PurchaseRequestDetailView from './views/PurchaseRequestDetailView';
 import PurchaseRequestsView from './views/PurchaseRequestsView';
+import QuotesView from './views/QuotesView';
 import SellerDashboardView from './views/SellerDashboardView';
 import SupportView from './views/SupportView';
 import VerdecitoView from './views/VerdecitoView';
 
-type TestUser = User & { password: string };
-
-const TEST_USER: TestUser = {
-  email: 'usuario@verdecito.com',
-  name: 'Usuario Verdecito',
-  password: '123456',
-};
-
 const SHIPPING_COST = 10;
 const DELIVERY_DAYS = 2;
 const PLATFORM_COMMISSION = 0.1;
+const PENDING_QUOTE_ACTION_KEY = 'pendingQuoteAction';
+
+type PendingQuoteAction = {
+  type: QuoteType | 'OPTIONS';
+  additionalProductTitles?: string[];
+  productId?: string;
+};
+
+const savePendingQuoteAction = (action: PendingQuoteAction) => {
+  localStorage.setItem(PENDING_QUOTE_ACTION_KEY, JSON.stringify(action));
+};
+
+const takePendingQuoteAction = (): PendingQuoteAction | null => {
+  const value = localStorage.getItem(PENDING_QUOTE_ACTION_KEY);
+  localStorage.removeItem(PENDING_QUOTE_ACTION_KEY);
+  if (!value) return null;
+
+  try {
+    return JSON.parse(value) as PendingQuoteAction;
+  } catch {
+    return null;
+  }
+};
 
 const formatDate = (date: Date) => date.toLocaleDateString('es-PE');
 
@@ -122,11 +151,49 @@ const mapClaimReasonToApi = (reason: string) => {
   return reasons[reason] ?? 'OTHER';
 };
 
+const publicViews: ViewName[] = [
+  'home',
+  'catalog',
+  'verdecito',
+  'productDetail',
+  'producerProfile',
+  'support',
+  'login',
+];
+
+const clientViews: ViewName[] = [
+  'cart',
+  'orders',
+  'orderTracking',
+  'orderSuccess',
+  'purchaseRequests',
+  'purchaseRequestDetail',
+  'quoteRequest',
+  'quoteOptions',
+  'quotes',
+  'quoteDetail',
+  'claims',
+  'notifications',
+];
+
+const sellerViews: ViewName[] = ['sellerDashboard', 'notifications'];
+
+const adminViews: ViewName[] = ['claims', 'adminQuotes', 'adminQuoteDetail', 'notifications'];
+
+const canAccessView = (nextView: ViewName, user: User | null) => {
+  if (publicViews.includes(nextView)) return true;
+  if (!user) return false;
+  if (user.role === 'CLIENT') return clientViews.includes(nextView);
+  if (user.role === 'SELLER') return sellerViews.includes(nextView);
+  if (user.role === 'ADMIN' || user.role === 'ADVISOR') return adminViews.includes(nextView);
+  return false;
+};
+
 export default function App() {
   const [view, setView] = useState<ViewName>('home');
-  const [currentRole, setCurrentRole] = useState<Role>('customer');
   const [activeProducerId, setActiveProducerId] = useState('muebles-ves');
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [sellerEditingProductId, setSellerEditingProductId] = useState<string | null>(null);
   const [previousView, setPreviousView] = useState<ViewName>('home');
   const [catalogFilter, setCatalogFilter] = useState<CatalogFilter | null>(null);
   const [selectedProducerId, setSelectedProducerId] = useState<string | null>(null);
@@ -150,6 +217,12 @@ export default function App() {
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedPurchaseRequestId, setSelectedPurchaseRequestId] = useState<string | null>(null);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
+  const [selectedQuoteProductId, setSelectedQuoteProductId] = useState<string | null>(null);
+  const [selectedQuoteAdditionalProducts, setSelectedQuoteAdditionalProducts] = useState<string[]>([]);
+  const [selectedQuoteType, setSelectedQuoteType] = useState<QuoteType>('REFERENCE_IMAGE');
+  const [catalogMode, setCatalogMode] = useState<'normal' | 'quote'>('normal');
+  const sessionRole = mapApiRoleToUiRole(currentUser?.role);
 
   useEffect(() => {
     let isMounted = true;
@@ -192,9 +265,18 @@ export default function App() {
 
   useEffect(() => {
     if (!catalogProducers.length) return;
+    const producerForUser = currentUser?.role === 'SELLER'
+      ? catalogProducers.find((producer) => producer.userId === currentUser.id)
+      : undefined;
+
+    if (producerForUser && producerForUser.id !== activeProducerId) {
+      setActiveProducerId(producerForUser.id);
+      return;
+    }
+
     if (catalogProducers.some((producer) => producer.id === activeProducerId)) return;
     setActiveProducerId(catalogProducers[0].id);
-  }, [activeProducerId, catalogProducers]);
+  }, [activeProducerId, catalogProducers, currentUser?.id, currentUser?.role]);
 
   useEffect(() => {
     let isMounted = true;
@@ -207,7 +289,6 @@ export default function App() {
         if (!isMounted) return;
 
         setCurrentUser(user);
-        setCurrentRole(mapApiRoleToUiRole(user.role));
       } catch {
         if (!isMounted) return;
         logoutFromBackend();
@@ -229,7 +310,7 @@ export default function App() {
       if (!currentUser) return;
 
       try {
-        if (currentRole === 'customer') {
+        if (sessionRole === 'customer') {
           const [remoteCart, remoteRequests, remoteOrders, remoteClaims] = await Promise.all([
             getRemoteCart(),
             getMyPurchaseRequests(),
@@ -244,19 +325,19 @@ export default function App() {
           setClaims(remoteClaims);
         }
 
-        if (currentRole === 'seller' || currentRole === 'admin') {
+        if (currentUser.role === 'SELLER') {
           const remoteSales = await getMySales();
           if (!isMounted) return;
           setSales(remoteSales);
         }
 
-        if (currentRole === 'admin') {
+        if (sessionRole === 'admin') {
           const remoteClaims = await getAllClaims();
           if (!isMounted) return;
           setClaims(remoteClaims);
         }
 
-        const remoteNotifications = await getNotifications(currentRole);
+        const remoteNotifications = await getNotifications(sessionRole);
         if (!isMounted) return;
         setNotifications(remoteNotifications);
       } catch {
@@ -269,7 +350,7 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, [currentUser, currentRole]);
+  }, [currentUser, sessionRole]);
 
   useEffect(() => {
     let isMounted = true;
@@ -278,33 +359,33 @@ export default function App() {
       if (!currentUser) return;
 
       try {
-        if (view === 'cart' && currentRole === 'customer') {
+        if (view === 'cart' && sessionRole === 'customer') {
           const remoteCart = await getRemoteCart();
           if (isMounted) setCartItems(remoteCart);
         }
 
-        if (view === 'orders' && currentRole === 'customer') {
+        if (view === 'orders' && sessionRole === 'customer') {
           const remoteOrders = await getMyOrders();
           if (isMounted) setOrders(remoteOrders);
         }
 
-        if (view === 'purchaseRequests' && currentRole === 'customer') {
+        if (view === 'purchaseRequests' && sessionRole === 'customer') {
           const remoteRequests = await getMyPurchaseRequests();
           if (isMounted) setPurchaseRequests(remoteRequests);
         }
 
-        if (view === 'sellerDashboard' && (currentRole === 'seller' || currentRole === 'admin')) {
+        if (view === 'sellerDashboard' && currentUser.role === 'SELLER') {
           const remoteSales = await getMySales();
           if (isMounted) setSales(remoteSales);
         }
 
         if (view === 'claims') {
-          const remoteClaims = currentRole === 'admin' ? await getAllClaims() : await getMyClaims();
+          const remoteClaims = sessionRole === 'admin' ? await getAllClaims() : await getMyClaims();
           if (isMounted) setClaims(remoteClaims);
         }
 
         if (view === 'notifications') {
-          const remoteNotifications = await getNotifications(currentRole);
+          const remoteNotifications = await getNotifications(sessionRole);
           if (isMounted) setNotifications(remoteNotifications);
         }
       } catch {
@@ -317,7 +398,12 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, [view, currentUser, currentRole]);
+  }, [view, currentUser, sessionRole]);
+
+  useEffect(() => {
+    if (canAccessView(view, currentUser)) return;
+    setView(currentUser ? 'home' : 'login');
+  }, [view, currentUser]);
 
   const findProducerById = (producerId: string | undefined) => (
     catalogProducers.find((producer) => producer.id === producerId)
@@ -325,6 +411,12 @@ export default function App() {
   );
 
   const navigate = (nextView: ViewName) => {
+    if (!canAccessView(nextView, currentUser)) {
+      setView(currentUser ? 'home' : 'login');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     setView(nextView);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -485,23 +577,8 @@ export default function App() {
     navigate(nextView);
   };
 
-  const handleRoleChange = (role: Role) => {
-    setCurrentRole(role);
-
-    if (role === 'seller') {
-      navigate('sellerDashboard');
-      return;
-    }
-
-    if (role === 'admin') {
-      navigate('claims');
-      return;
-    }
-
-    navigate('home');
-  };
-
   const handleNavigateToCatalog = (filter: CatalogFilter | null = null) => {
+    setCatalogMode('normal');
     setCatalogFilter(filter);
     navigate('catalog');
   };
@@ -526,12 +603,96 @@ export default function App() {
     navigate('productDetail');
   };
 
+  const openQuoteAction = (action: PendingQuoteAction) => {
+    setCatalogMode('normal');
+
+    if (action.type === 'OPTIONS') {
+      setSelectedQuoteProductId(null);
+      setSelectedQuoteAdditionalProducts([]);
+      navigate('quoteOptions');
+      return;
+    }
+
+    setSelectedQuoteType(action.type);
+    setSelectedQuoteProductId(action.productId ?? null);
+    setSelectedQuoteAdditionalProducts(action.additionalProductTitles ?? []);
+    navigate('quoteRequest');
+  };
+
+  const requestQuoteAction = (action: PendingQuoteAction) => {
+    if (!currentUser) {
+      savePendingQuoteAction(action);
+      setLoginError('Ingresa o regístrate para solicitar una cotización.');
+      navigate('login');
+      return;
+    }
+
+    if (currentUser.role === 'ADMIN' || currentUser.role === 'ADVISOR') {
+      setCartMessage('Para realizar esta acción debes ingresar con una cuenta de cliente.');
+      return;
+    }
+
+    if (currentUser.role === 'SELLER') {
+      setCartMessage('Para realizar esta acción debes ingresar con una cuenta de cliente.');
+      return;
+    }
+
+    openQuoteAction(action);
+  };
+
+  const handleOpenQuoteOptions = () => {
+    requestQuoteAction({ type: 'OPTIONS' });
+  };
+
+  const handleOpenReferenceQuote = () => {
+    requestQuoteAction({ type: 'REFERENCE_IMAGE' });
+  };
+
+  const handleOpenQuoteCatalog = () => {
+    if (!currentUser) {
+      requestQuoteAction({ type: 'OPTIONS' });
+      return;
+    }
+
+    if (currentUser.role !== 'CLIENT') {
+      requestQuoteAction({ type: 'OPTIONS' });
+      return;
+    }
+
+    setCatalogMode('quote');
+    setCatalogFilter(null);
+    navigate('catalog');
+  };
+
+  const handleOpenQuoteRequest = (productId: string) => {
+    requestQuoteAction({ type: 'PRODUCT_BASED', productId });
+  };
+
+  const handleOpenCartQuoteRequest = (productId: string, additionalProductTitles: string[]) => {
+    requestQuoteAction({ type: 'PRODUCT_BASED', productId, additionalProductTitles });
+  };
+
+  const handleOpenQuoteDetail = (quoteId: string) => {
+    setSelectedQuoteId(quoteId);
+    navigate('quoteDetail');
+  };
+
+  const handleOpenAdminQuoteDetail = (quoteId: string) => {
+    setSelectedQuoteId(quoteId);
+    navigate('adminQuoteDetail');
+  };
+
   const addToCart = async (productId: string) => {
     if (!currentUser) {
       setHasPendingCheckout(true);
       setPendingCartProductId(productId);
       setCartMessage('Debes iniciar sesion para agregar productos al carrito.');
       navigate('login');
+      return;
+    }
+
+    if (currentUser.role !== 'CLIENT') {
+      setCartMessage('Para realizar esta acción debes ingresar con una cuenta de cliente.');
       return;
     }
 
@@ -652,34 +813,40 @@ export default function App() {
       const user = await loginWithBackend(email, password);
 
       setCurrentUser(user);
-      setCurrentRole(mapApiRoleToUiRole(user.role));
-      if (pendingCartProductId) {
+      if (pendingCartProductId && user.role === 'CLIENT') {
         try {
           await addRemoteCartItem(pendingCartProductId, 1);
           setCartItems(await getRemoteCart());
         } catch {
           setCartItems((currentItems) => [...currentItems, { productId: pendingCartProductId, quantity: 1 }]);
         }
-        setPendingCartProductId(null);
       }
+      setPendingCartProductId(null);
       setLoginError('');
-      navigate(hasPendingCheckout ? 'cart' : 'home');
-    } catch (error) {
-      if (email === TEST_USER.email && password === TEST_USER.password) {
-        setCurrentUser({
-          email: TEST_USER.email,
-          name: TEST_USER.name,
-        });
-        if (pendingCartProductId) {
-          setCartItems((currentItems) => [...currentItems, { productId: pendingCartProductId, quantity: 1 }]);
-          setPendingCartProductId(null);
+      const pendingQuoteAction = takePendingQuoteAction();
+      let nextView: ViewName = hasPendingCheckout && user.role === 'CLIENT'
+          ? 'cart'
+          : 'home';
+
+      if (pendingQuoteAction && user.role === 'CLIENT') {
+        if (pendingQuoteAction.type === 'OPTIONS') {
+          setSelectedQuoteProductId(null);
+          setSelectedQuoteAdditionalProducts([]);
+          nextView = 'quoteOptions';
+        } else {
+          setSelectedQuoteType(pendingQuoteAction.type);
+          setSelectedQuoteProductId(pendingQuoteAction.productId ?? null);
+          setSelectedQuoteAdditionalProducts(pendingQuoteAction.additionalProductTitles ?? []);
+          nextView = 'quoteRequest';
         }
-        setCurrentRole('customer');
-        setLoginError('');
-        navigate(hasPendingCheckout ? 'cart' : 'home');
-        return;
+      } else if (pendingQuoteAction && (user.role === 'ADMIN' || user.role === 'ADVISOR')) {
+        nextView = 'adminQuotes';
       }
 
+      setHasPendingCheckout(false);
+      setView(nextView);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
       setLoginError(error instanceof Error ? error.message : 'Correo o contrasena incorrectos.');
     }
   };
@@ -688,7 +855,9 @@ export default function App() {
     logoutFromBackend();
     setCurrentUser(null);
     setHasPendingCheckout(false);
+    localStorage.removeItem(PENDING_QUOTE_ACTION_KEY);
     setPendingCartProductId(null);
+    setSelectedQuoteAdditionalProducts([]);
     setCartItems([]);
     setLoginError('');
     navigate('home');
@@ -728,11 +897,12 @@ export default function App() {
 
     const requestItems = getMarketplaceItems(cartItems).filter((item) => {
       const product = catalogProducts.find((entry) => entry.id === item.productId);
-      return product?.availabilityType !== 'CUSTOM_QUOTE';
+      return product?.requiresConfirmation === true
+        || product?.availabilityType === 'MADE_TO_ORDER';
     });
 
     if (!requestItems.length) {
-      setCartNotice('Este carrito solo contiene productos que requieren cotizacion personalizada.');
+      setCartNotice('No hay productos que requieran confirmacion en este carrito.');
       return;
     }
 
@@ -756,11 +926,6 @@ export default function App() {
     addNotification('customer', 'Solicitud enviada', 'Tu solicitud fue enviada a los productores.', 'purchaseRequests');
     addNotification('seller', 'Nueva solicitud de venta', 'Tienes una solicitud pendiente por confirmar.', 'sellerDashboard');
     navigate('purchaseRequestDetail');
-  };
-
-  const handleRequestQuote = () => {
-    setCartNotice('Este flujo sera gestionado por un asesor. La cotizacion completa se implementara en otra fase.');
-    addNotification('admin', 'Solicitud de cotizacion visual', 'Un cliente intento solicitar una cotizacion personalizada.', 'notifications');
   };
 
   const updateRequestAfterProducerAction = (
@@ -982,6 +1147,69 @@ export default function App() {
     addNotification('customer', 'Producto marcado como listo', `${sale.producerName} marco productos listos para despacho.`, 'orders');
   };
 
+  const handleMarkSaleDispatched = async (saleId: string) => {
+    const sale = sales.find((entry) => entry.id === saleId);
+    if (!sale) return;
+
+    try {
+      const updatedSale = await markSaleDispatched(saleId);
+      setSales((current) => current.map((entry) => (
+        entry.id === saleId ? { ...entry, ...updatedSale } : entry
+      )));
+      syncOrderGroupStatus(updatedSale, 'DISPATCHED');
+      return;
+    } catch {
+      setSales((current) => current.map((entry) => (
+        entry.id === saleId ? { ...entry, status: 'DISPATCHED' } : entry
+      )));
+      syncOrderGroupStatus(sale, 'DISPATCHED');
+    }
+  };
+
+  const handleMarkSaleDelivered = async (saleId: string) => {
+    const sale = sales.find((entry) => entry.id === saleId);
+    if (!sale) return;
+
+    try {
+      const updatedSale = await markSaleDelivered(saleId);
+      setSales((current) => current.map((entry) => (
+        entry.id === saleId ? { ...entry, ...updatedSale } : entry
+      )));
+      syncOrderGroupStatus(updatedSale, 'DELIVERED');
+      return;
+    } catch {
+      setSales((current) => current.map((entry) => (
+        entry.id === saleId ? { ...entry, status: 'DELIVERED' } : entry
+      )));
+      syncOrderGroupStatus(sale, 'DELIVERED');
+    }
+  };
+
+  const refreshCatalogProducts = async () => {
+    try {
+      const products = await fetchProducts();
+      if (products.length) setCatalogProducts(products);
+    } catch {
+      // Keep current catalog when refresh is not available.
+    }
+  };
+
+  const handleCreateProduct = async (data: ProductFormInput) => {
+    const product = await createRemoteProduct(data);
+    setCatalogProducts((current) => [product, ...current.filter((entry) => entry.id !== product.id)]);
+    void refreshCatalogProducts();
+    return product;
+  };
+
+  const handleUpdateProduct = async (productId: string, data: ProductFormInput) => {
+    const product = await updateRemoteProduct(productId, data);
+    setCatalogProducts((current) => current.map((entry) => (
+      entry.id === productId ? product : entry
+    )));
+    void refreshCatalogProducts();
+    return product;
+  };
+
   const handleCreateClaim = async (orderId: string, reason: string, description: string) => {
     try {
       const claim = await createRemoteClaim(orderId, mapClaimReasonToApi(reason), description);
@@ -1002,7 +1230,7 @@ export default function App() {
     const claim: Claim = {
       id: `RCL-${String(claims.length + 1).padStart(3, '0')}`,
       orderId,
-      customerId: currentUser?.email ?? TEST_USER.email,
+      customerId: currentUser?.id ?? currentUser?.email ?? 'cliente-demo',
       reason,
       description,
       status: 'OPEN',
@@ -1068,7 +1296,7 @@ export default function App() {
     }
 
     setNotifications((current) => current.map((notification) => (
-      notification.role === currentRole ? { ...notification, read: true } : notification
+      notification.role === sessionRole ? { ...notification, read: true } : notification
     )));
   };
 
@@ -1086,15 +1314,25 @@ export default function App() {
   };
 
   const selectedProduct = catalogProducts.find((product) => product.id === selectedProductId);
+  const selectedQuoteProduct = catalogProducts.find((product) => product.id === selectedQuoteProductId);
   const selectedProductProducer = findProducerById(selectedProduct?.producerId);
   const selectedProducer = findProducerById(selectedProducerId ?? undefined);
+  const sellerProducer = currentUser?.role === 'SELLER'
+    ? catalogProducers.find((producer) => producer.userId === currentUser.id)
+      ?? catalogProducers.find((producer) => producer.id === activeProducerId)
+    : undefined;
   const lastOrder = orders.find((order) => order.id === lastOrderId);
   const selectedOrder = orders.find((order) => order.id === selectedOrderId);
   const selectedPurchaseRequest = purchaseRequests.find((request) => request.id === selectedPurchaseRequestId);
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
   const notificationCount = notifications.filter((notification) => (
-    notification.role === currentRole && !notification.read
+    notification.role === sessionRole && !notification.read
   )).length;
+
+  const handleEditProductFromDetail = (productId: string) => {
+    setSellerEditingProductId(productId);
+    navigate('sellerDashboard');
+  };
 
   const renderView = () => {
     if (view === 'catalog') {
@@ -1107,6 +1345,7 @@ export default function App() {
           onProductSelect={(productId) => openProduct(productId, 'catalog')}
           producers={catalogProducers}
           products={catalogProducts}
+          quoteMode={catalogMode === 'quote'}
         />
       );
     }
@@ -1125,11 +1364,15 @@ export default function App() {
       return (
         <ProductDetailView
           cartMessage={cartMessage}
+          currentUser={currentUser}
           onAddToCart={addToCart}
           onBack={() => navigate(previousView)}
+          onEditProduct={handleEditProductFromDetail}
           onProducerSelect={handleProducerSelect}
+          onRequestQuote={handleOpenQuoteRequest}
           product={selectedProduct}
           producer={selectedProductProducer}
+          sellerProducerId={sellerProducer?.id}
         />
       );
     }
@@ -1159,8 +1402,8 @@ export default function App() {
           onNavigate={navigate}
           onPayNow={handlePayNow}
           onRemove={removeFromCart}
+          onRequestCartQuote={handleOpenCartQuoteRequest}
           onRequestPurchase={handleCreatePurchaseRequest}
-          onRequestQuote={handleRequestQuote}
         />
       );
     }
@@ -1213,16 +1456,24 @@ export default function App() {
     if (view === 'sellerDashboard') {
       return (
         <SellerDashboardView
-          activeProducerId={activeProducerId}
+          activeProducerId={sellerProducer?.id ?? activeProducerId}
+          categories={catalogCategories}
+          initialEditProductId={sellerEditingProductId}
+          initialTab="summary"
+          notifications={notifications}
           products={catalogProducts}
           producers={catalogProducers}
           requests={purchaseRequests}
           sales={sales}
-          onChangeProducer={setActiveProducerId}
+          onClearEditProduct={() => setSellerEditingProductId(null)}
           onConfirmRequest={handleSellerConfirmRequest}
+          onCreateProduct={handleCreateProduct}
+          onMarkSaleDelivered={handleMarkSaleDelivered}
+          onMarkSaleDispatched={handleMarkSaleDispatched}
           onMarkSaleInPreparation={handleMarkSaleInPreparation}
           onMarkSaleReady={handleMarkSaleReady}
           onRejectRequest={handleSellerRejectRequest}
+          onUpdateProduct={handleUpdateProduct}
         />
       );
     }
@@ -1232,7 +1483,7 @@ export default function App() {
         <ClaimsView
           claims={claims}
           orders={orders}
-          role={currentRole}
+          role={sessionRole}
           onResolveClaim={handleResolveClaim}
         />
       );
@@ -1242,7 +1493,7 @@ export default function App() {
       return (
         <NotificationsView
           notifications={notifications}
-          role={currentRole}
+          role={sessionRole}
           onMarkAllRead={handleMarkAllNotificationsRead}
           onOpenNotification={handleOpenNotification}
         />
@@ -1251,6 +1502,56 @@ export default function App() {
 
     if (view === 'support') {
       return <SupportView />;
+    }
+
+    if (view === 'quoteRequest') {
+      return (
+        <QuoteRequestView
+          onNavigate={navigate}
+          onQuoteCreated={() => navigate('quotes')}
+          additionalProductTitles={selectedQuoteAdditionalProducts}
+          product={selectedQuoteProduct}
+          quoteType={selectedQuoteType}
+        />
+      );
+    }
+
+    if (view === 'quoteOptions') {
+      return (
+        <QuoteOptionsView
+          onNavigate={navigate}
+          onQuoteByProduct={handleOpenQuoteCatalog}
+          onQuoteByReference={handleOpenReferenceQuote}
+        />
+      );
+    }
+
+    if (view === 'quotes') {
+      return (
+        <QuotesView
+          onNavigate={navigate}
+          onOpenQuote={handleOpenQuoteDetail}
+          onQuoteByProduct={handleOpenQuoteCatalog}
+        />
+      );
+    }
+
+    if (view === 'quoteDetail') {
+      return <QuoteDetailView onNavigate={navigate} quoteId={selectedQuoteId} />;
+    }
+
+    if (view === 'adminQuotes') {
+      return <AdminQuotesView onOpenQuote={handleOpenAdminQuoteDetail} />;
+    }
+
+    if (view === 'adminQuoteDetail') {
+      return (
+        <AdminQuoteDetailView
+          onNavigate={navigate}
+          producers={catalogProducers}
+          quoteId={selectedQuoteId}
+        />
+      );
     }
 
     return (
@@ -1262,6 +1563,7 @@ export default function App() {
         onNavigate={navigate}
         onOpenCatalog={() => handleNavigateToCatalog()}
         onProductSelect={(productId) => openProduct(productId, 'home')}
+        onRequestQuote={handleOpenQuoteOptions}
         onShowSustainableProducts={handleShowSustainableProducts}
         products={catalogProducts}
       />
@@ -1273,12 +1575,10 @@ export default function App() {
       <Navbar
         activeView={view}
         cartCount={cartCount}
-        currentRole={currentRole}
         currentUser={currentUser}
         notificationCount={notificationCount}
         onNavigate={handleNavbarNavigate}
         onLogout={handleLogout}
-        onRoleChange={handleRoleChange}
       />
       <div className="appMain">
         {renderView()}
