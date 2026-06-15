@@ -7,6 +7,7 @@ import type {
   PaymentOption,
   PurchaseRequest,
   PurchaseRequestGroup,
+  PurchaseRequestStatus,
 } from '../types';
 import { getRequest, patchRequest, postRequest } from './api';
 import { mapApiOrderToOrder } from './ordersService';
@@ -74,6 +75,56 @@ export async function getMyPurchaseRequests() {
   return response.map(mapApiPurchaseRequestToPurchaseRequest);
 }
 
+type ApiSellerPurchaseRequest = {
+  groupId: string;
+  producerId?: string;
+  productTitle: string;
+  quantity: number;
+  status: PurchaseRequestGroup['status'];
+  deliveryDistrict?: string | null;
+  requestedAt?: string | null;
+  notes?: string | null;
+  estimatedReadyDate?: string | null;
+  sellerComment?: string | null;
+};
+
+export async function getSellerPurchaseRequests() {
+  const response = await getRequest<ApiSellerPurchaseRequest[]>('/purchase-requests/seller');
+  return response.map((item): PurchaseRequest => {
+    const marketplaceItem: MarketplaceItem = {
+      productId: item.groupId,
+      quantity: item.quantity,
+      title: item.productTitle,
+      price: 'S/. 0',
+      numericPrice: 0,
+      producerId: item.producerId ?? 'seller',
+      producerName: 'Tu productora',
+    };
+
+    return {
+      id: item.groupId,
+      customerId: '',
+      customerName: 'Cliente registrado',
+      items: [marketplaceItem],
+      groupsByProducer: [{
+        id: item.groupId,
+        producerId: item.producerId ?? 'seller',
+        producerName: 'Tu productora',
+        items: [marketplaceItem],
+        status: item.status,
+        readyDate: formatDate(item.estimatedReadyDate),
+        observation: item.sellerComment ?? item.notes ?? undefined,
+      }],
+      status: item.status === 'CONFIRMED'
+        ? 'READY_TO_PAY' as PurchaseRequestStatus
+        : 'PENDING_PRODUCER_CONFIRMATION',
+      createdAt: formatDate(item.requestedAt) ?? '',
+      deliveryDays: 2,
+      total: 0,
+    };
+  });
+}
+
 export async function getPurchaseRequestById(id: string) {
   const response = await getRequest<ApiPurchaseRequest>(`/purchase-requests/${id}`);
   return mapApiPurchaseRequestToPurchaseRequest(response);
@@ -95,9 +146,12 @@ export async function payPurchaseRequest(id: string, paymentOption: PaymentOptio
 }
 
 export function confirmPurchaseRequestGroup(groupId: string, readyDate: string, observation?: string) {
-  return patchRequest(`/purchase-requests/groups/${groupId}/confirm`, { readyDate, observation });
+  return patchRequest(`/purchase-requests/groups/${groupId}/confirm`, {
+    estimatedReadyDate: readyDate,
+    sellerComment: observation,
+  });
 }
 
 export function rejectPurchaseRequestGroup(groupId: string, observation?: string) {
-  return patchRequest(`/purchase-requests/groups/${groupId}/reject`, { observation });
+  return patchRequest(`/purchase-requests/groups/${groupId}/reject`, { reason: observation });
 }

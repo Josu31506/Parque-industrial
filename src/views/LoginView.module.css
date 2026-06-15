@@ -10,7 +10,7 @@
 }
 
 .card {
-  width: min(100%, 440px);
+  width: min(100%, 720px);
   padding: 36px;
   border: 1px solid #dfe5dd;
   border-radius: 28px;
@@ -48,7 +48,8 @@
   font-weight: 850;
 }
 
-.field input {
+.field input,
+.field textarea {
   width: 100%;
   min-height: 50px;
   padding: 0 14px;
@@ -63,9 +64,63 @@
     box-shadow 0.2s ease;
 }
 
-.field input:focus {
+.field textarea {
+  min-height: 104px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+.field input:focus,
+.field textarea:focus {
   border-color: #2e7d32;
   box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.12);
+}
+
+.modeTabs,
+.accountSwitch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.modeTabs button,
+.accountSwitch label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #dfe5dd;
+  border-radius: 999px;
+  color: #0d2f5f;
+  background: #f8faf6;
+  font-weight: 900;
+}
+
+.modeTabs .active {
+  color: #fff;
+  background: #0d2f5f;
+}
+
+.accountSwitch input {
+  margin-right: 8px;
+}
+
+.producerBlock {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 18px;
+  padding: 18px;
+  border: 1px solid #dfe5dd;
+  border-radius: 18px;
+  background: #f8faf6;
+}
+
+.producerBlock h2 {
+  margin: 0 0 10px;
+  color: #0d2f5f;
+  font-size: 1.1rem;
 }
 
 .error {
@@ -116,12 +171,17 @@
   }
 
   .card {
-    width: min(100% - 24px, 440px);
+    width: min(100% - 24px, 720px);
     padding: 28px 22px;
     border-radius: 22px;
   }
 
   .cardHeader h1 {
     font-size: 1.8rem;
+  }
+
+  .modeTabs,
+  .accountSwitch {
+    grid-template-columns: 1fr;
   }
 }

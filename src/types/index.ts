@@ -119,6 +119,10 @@ export type Producer = {
   type: string;
   location: string;
   description: string;
+  phone?: string;
+  address?: string;
+  isApproved?: boolean;
+  rating?: number;
   image?: string;
   avatar?: string;
 };
@@ -144,6 +148,10 @@ export type User = {
   name: string;
   email: string;
   role?: ApiRole;
+  phone?: string;
+  district?: string;
+  isActive?: boolean;
+  createdAt?: string;
 };
 
 export type MarketplaceItem = CartItem & {
@@ -324,7 +332,9 @@ export type ApiUser = {
   email: string;
   role: ApiRole;
   phone?: string | null;
+  district?: string | null;
   isActive?: boolean;
+  createdAt?: string;
 };
 
 export type ApiProducer = {
@@ -336,6 +346,8 @@ export type ApiProducer = {
   description: string;
   rating?: number | null;
   isApproved?: boolean;
+  phone?: string | null;
+  address?: string | null;
 };
 
 export type ApiCategory = {

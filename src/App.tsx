@@ -8,7 +8,13 @@ import {
   producers as fallbackProducers,
   products as fallbackProducts,
 } from './data/catalog';
-import { getMe, login as loginWithBackend, logout as logoutFromBackend } from './services/authService';
+import {
+  getMe,
+  login as loginWithBackend,
+  logout as logoutFromBackend,
+  registerClient,
+  registerSeller,
+} from './services/authService';
 import { getAccessToken } from './services/api';
 import {
   addCartItem as addRemoteCartItem,
@@ -40,6 +46,7 @@ import {
   continueWithConfirmed,
   createPurchaseRequest,
   getMyPurchaseRequests,
+  getSellerPurchaseRequests,
   payPurchaseRequest,
   rejectPurchaseRequestGroup,
 } from './services/purchaseRequestsService';
@@ -326,9 +333,13 @@ export default function App() {
         }
 
         if (currentUser.role === 'SELLER') {
-          const remoteSales = await getMySales();
+          const [remoteSales, remoteSellerRequests] = await Promise.all([
+            getMySales(),
+            getSellerPurchaseRequests(),
+          ]);
           if (!isMounted) return;
           setSales(remoteSales);
+          setPurchaseRequests(remoteSellerRequests);
         }
 
         if (sessionRole === 'admin') {
@@ -375,8 +386,14 @@ export default function App() {
         }
 
         if (view === 'sellerDashboard' && currentUser.role === 'SELLER') {
-          const remoteSales = await getMySales();
-          if (isMounted) setSales(remoteSales);
+          const [remoteSales, remoteSellerRequests] = await Promise.all([
+            getMySales(),
+            getSellerPurchaseRequests(),
+          ]);
+          if (isMounted) {
+            setSales(remoteSales);
+            setPurchaseRequests(remoteSellerRequests);
+          }
         }
 
         if (view === 'claims') {
@@ -848,6 +865,50 @@ export default function App() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : 'Correo o contrasena incorrectos.');
+    }
+  };
+
+  const handleRegister = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const accountType = String(formData.get('accountType') ?? 'CLIENT');
+    const password = String(formData.get('password') ?? '');
+    const confirmPassword = String(formData.get('confirmPassword') ?? '');
+
+    if (password !== confirmPassword) {
+      setLoginError('Las contrasenas no coinciden.');
+      return;
+    }
+
+    try {
+      const baseData = {
+        name: String(formData.get('name') ?? '').trim(),
+        email: String(formData.get('email') ?? '').trim(),
+        password,
+        phone: String(formData.get('phone') ?? '').trim() || undefined,
+        district: String(formData.get('district') ?? '').trim() || undefined,
+      };
+      const user = accountType === 'SELLER'
+        ? await registerSeller({
+          ...baseData,
+          producer: {
+            businessName: String(formData.get('businessName') ?? '').trim(),
+            type: String(formData.get('producerType') ?? '').trim(),
+            location: String(formData.get('location') ?? '').trim(),
+            description: String(formData.get('description') ?? '').trim(),
+            phone: String(formData.get('businessPhone') ?? '').trim() || undefined,
+            address: String(formData.get('address') ?? '').trim() || undefined,
+          },
+        })
+        : await registerClient(baseData);
+
+      setCurrentUser(user);
+      setLoginError('');
+      setHasPendingCheckout(false);
+      setView(user.role === 'SELLER' ? 'sellerDashboard' : 'home');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : 'No se pudo completar el registro.');
     }
   };
 
@@ -1409,7 +1470,7 @@ export default function App() {
     }
 
     if (view === 'login') {
-      return <LoginView error={loginError} onLogin={handleLogin} />;
+      return <LoginView error={loginError} onLogin={handleLogin} onRegister={handleRegister} />;
     }
 
     if (view === 'orderSuccess') {
@@ -1472,6 +1533,7 @@ export default function App() {
           onMarkSaleDispatched={handleMarkSaleDispatched}
           onMarkSaleInPreparation={handleMarkSaleInPreparation}
           onMarkSaleReady={handleMarkSaleReady}
+          onViewProduct={(productId) => openProduct(productId, 'sellerDashboard')}
           onRejectRequest={handleSellerRejectRequest}
           onUpdateProduct={handleUpdateProduct}
         />

@@ -5,7 +5,6 @@ import type { Category, Notification, Producer, Product, PurchaseRequest, Purcha
 import { getCategoryDisplayName, getSaleDisplayName } from '../utils/displayNames';
 import {
   getActiveLabel,
-  getAvailabilityLabel,
   getConfirmationLabel,
   getFundsStatusLabel,
   getProductTypeLabel,
@@ -33,6 +32,7 @@ type SellerDashboardViewProps = {
   onMarkSaleDispatched: (saleId: string) => void;
   onMarkSaleInPreparation: (saleId: string) => void;
   onMarkSaleReady: (saleId: string) => void;
+  onViewProduct: (productId: string) => void;
   onRejectRequest: (requestId: string, producerId: string, observation: string) => void;
   onUpdateProduct: (productId: string, data: ProductFormInput) => Promise<Product>;
 };
@@ -285,6 +285,7 @@ export default function SellerDashboardView({
   onMarkSaleDispatched,
   onMarkSaleInPreparation,
   onMarkSaleReady,
+  onViewProduct,
   onRejectRequest,
   onUpdateProduct,
 }: SellerDashboardViewProps) {
@@ -385,21 +386,34 @@ export default function SellerDashboardView({
               <div className={styles.empty}>Aun no tienes productos publicados.</div>
             ) : sellerProducts.map((product) => (
               <article className={styles.productCard} key={product.id}>
-                <span className={styles.productImage} style={{ backgroundImage: `url(${product.image})` }} />
+                <span
+                  className={styles.productImage}
+                  style={product.image ? { backgroundImage: `url(${product.image})` } : undefined}
+                >
+                  {!product.image && 'Sin imagen'}
+                </span>
                 <div>
+                  {product.badge && <span className={styles.productBadge}>{product.badge}</span>}
                   <h2>{product.title}</h2>
                   <p>{getCategoryDisplayName(undefined, product.category)}</p>
                 </div>
                 <div className={styles.productFacts}>
                   <p><span>Precio</span><strong>{product.price}</strong></p>
-                  <p><span>Disponibilidad</span><strong>{getAvailabilityLabel(product.availabilityType)}</strong></p>
-                  <p><span>Stock</span><strong>{product.stock ?? 'No aplica'}</strong></p>
+                  <p><span>Tipo de venta</span><strong>{getConfirmationLabel(product.requiresConfirmation)}</strong></p>
+                  <p><span>Stock</span><strong>{product.stock === undefined ? 'No aplica' : `${product.stock} unidades`}</strong></p>
+                  {product.estimatedDispatchDays && (
+                    <p><span>Dias estimados</span><strong>{product.estimatedDispatchDays}</strong></p>
+                  )}
                   <p><span>Estado</span><strong>{getActiveLabel(product.isActive)}</strong></p>
-                  <p><span>Compra</span><strong>{getConfirmationLabel(product.requiresConfirmation)}</strong></p>
                 </div>
-                <button className="primaryButton" type="button" onClick={() => openEditProduct(product)}>
-                  Ver / editar
-                </button>
+                <div className={styles.productActions}>
+                  <button className="primaryButton" type="button" onClick={() => openEditProduct(product)}>
+                    Editar producto
+                  </button>
+                  <button className={styles.ghostButton} type="button" onClick={() => onViewProduct(product.id)}>
+                    Ver detalle
+                  </button>
+                </div>
               </article>
             ))}
           </div>
@@ -432,7 +446,7 @@ export default function SellerDashboardView({
                   <div className={styles.cardHeader}>
                     <div>
                       <h2>Solicitud de {group.items.length} producto(s)</h2>
-                      <p>Cliente: {request.customerName || 'Cliente no disponible'}</p>
+                      <p>{request.customerName || 'Cliente registrado'}</p>
                       <p>Fecha: {request.createdAt}</p>
                     </div>
                     <span className={styles.status}>{getPurchaseRequestGroupStatusLabel(group.status)}</span>

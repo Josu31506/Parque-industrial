@@ -10,6 +10,10 @@ export function mapApiProducerToProducer(apiProducer: ApiProducer): Producer {
     type: apiProducer.type,
     location: apiProducer.location,
     description: apiProducer.description,
+    phone: apiProducer.phone ?? undefined,
+    address: apiProducer.address ?? undefined,
+    isApproved: apiProducer.isApproved,
+    rating: apiProducer.rating ?? undefined,
     avatar: apiProducer.businessName.slice(0, 2).toUpperCase(),
   };
 }

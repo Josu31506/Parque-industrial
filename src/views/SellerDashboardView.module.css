@@ -209,15 +209,40 @@
 .productCard {
   display: grid;
   gap: 14px;
+  grid-template-rows: auto auto 1fr auto;
 }
 
 .productImage {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 170px;
   border-radius: 14px;
-  background: #e9eef5;
+  color: #667085;
+  background: linear-gradient(135deg, #e9eef5, #f8fafc);
   background-position: center;
   background-size: cover;
+  font-weight: 900;
+  overflow: hidden;
+}
+
+.productBadge {
+  display: inline-flex;
+  width: max-content;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #2e7d32;
+  background: #eef7e8;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.productActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-self: end;
 }
 
 .productForm {
@@ -308,8 +333,13 @@
 
   .formGrid button,
   .actions button,
+  .productActions,
   .tabs button,
   .formHeader button {
     width: 100%;
+  }
+
+  .productActions {
+    grid-template-columns: 1fr;
   }
 }
