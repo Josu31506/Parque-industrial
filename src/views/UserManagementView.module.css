@@ -1,0 +1,203 @@
+.page {
+  min-height: calc(100vh - 180px);
+  padding: 72px 0;
+  background: #f7fafc;
+}
+
+.content {
+  display: grid;
+  gap: 28px;
+}
+
+.heading h1,
+.formCard h2,
+.listCard h2,
+.producerBox h3,
+.userRow h3 {
+  margin: 0;
+  color: #0f2c59;
+}
+
+.heading p,
+.formCard p,
+.listCard p,
+.userRow p,
+.userRow small {
+  margin: 0;
+  color: #5f6f84;
+  line-height: 1.55;
+}
+
+.kicker {
+  color: #e59866;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.85fr) 1.15fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.formCard,
+.listCard {
+  display: grid;
+  gap: 18px;
+  padding: 26px;
+  border: 1px solid rgba(15, 44, 89, 0.1);
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 16px 40px rgba(15, 44, 89, 0.07);
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field span {
+  color: #0f2c59;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  color: #1f2933;
+  background: #ffffff;
+  outline: none;
+  font: inherit;
+}
+
+.field textarea {
+  min-height: 110px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+.producerBox {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #dfe5dd;
+  border-radius: 18px;
+  background: #f8faf6;
+}
+
+.listHeader,
+.userRow {
+  display: grid;
+  gap: 14px;
+}
+
+.listHeader {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.userList {
+  display: grid;
+  gap: 12px;
+}
+
+.userRow {
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #fbfcfe;
+}
+
+.role,
+.activeStatus,
+.inactive {
+  justify-self: start;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.role {
+  color: #0f2c59;
+  background: #e7eef8;
+}
+
+.activeStatus {
+  color: #1f6f37;
+  background: #e8f5e9;
+}
+
+.inactive {
+  color: #8a4a13;
+  background: #fff1e7;
+}
+
+.userRow button {
+  padding: 9px 12px;
+  border: 1px solid rgba(15, 44, 89, 0.14);
+  border-radius: 999px;
+  color: #0f2c59;
+  background: #ffffff;
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.success,
+.error {
+  display: block;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.success {
+  color: #1f6f37;
+  background: #e8f5e9;
+}
+
+.error {
+  color: #b42318;
+  background: #fff4f2;
+}
+
+@media (max-width: 1040px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .page {
+    padding: 48px 0;
+  }
+
+  .formCard,
+  .listCard {
+    padding: 22px;
+    border-radius: 20px;
+  }
+
+  .listHeader,
+  .userRow {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .userRow button,
+  .listHeader button {
+    width: 100%;
+  }
+}

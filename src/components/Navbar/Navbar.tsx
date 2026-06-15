@@ -43,14 +43,24 @@ const adminNav: NavItem[] = [
   { label: 'Inicio', view: 'home' },
   { label: 'Catalogo', view: 'catalog' },
   { label: 'Reclamos', view: 'claims' },
-  { label: 'Gestión de cotizaciones', view: 'adminQuotes' },
+  { label: 'Gestion de usuarios', view: 'userManagement' },
+  { label: 'Gestion de cotizaciones', view: 'adminQuotes' },
+  { label: 'Notificaciones', view: 'notifications' },
+];
+
+const advisorNav: NavItem[] = [
+  { label: 'Inicio', view: 'home' },
+  { label: 'Catalogo', view: 'catalog' },
+  { label: 'Reclamos', view: 'claims' },
+  { label: 'Gestion de cotizaciones', view: 'adminQuotes' },
   { label: 'Notificaciones', view: 'notifications' },
 ];
 
 const getNavItems = (role: ApiRole | undefined) => {
   if (!role) return publicNav;
   if (role === 'SELLER') return sellerNav;
-  if (role === 'ADMIN' || role === 'ADVISOR') return adminNav;
+  if (role === 'ADMIN') return adminNav;
+  if (role === 'ADVISOR') return advisorNav;
   return customerNav;
 };
 

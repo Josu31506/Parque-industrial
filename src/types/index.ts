@@ -74,6 +74,7 @@ export type ViewName =
   | 'quoteDetail'
   | 'adminQuotes'
   | 'adminQuoteDetail'
+  | 'userManagement'
   | 'claims'
   | 'notifications';
 

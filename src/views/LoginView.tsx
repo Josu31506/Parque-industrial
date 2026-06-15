@@ -9,18 +9,16 @@ type LoginViewProps = {
 };
 
 type AuthMode = 'login' | 'register';
-type AccountType = 'CLIENT' | 'SELLER';
 
 export default function LoginView({ error, onLogin, onRegister }: LoginViewProps) {
   const [mode, setMode] = useState<AuthMode>('login');
-  const [accountType, setAccountType] = useState<AccountType>('CLIENT');
 
   return (
     <main className={styles.page}>
       <section className={styles.card}>
         <div className={styles.cardHeader}>
           <h1>{mode === 'login' ? 'Iniciar sesion' : 'Crear cuenta'}</h1>
-          <p>{mode === 'login' ? 'Accede para continuar con tu pedido.' : 'Registra tus datos para usar Parque Industrial Conecta.'}</p>
+          <p>{mode === 'login' ? 'Accede para continuar con tu pedido.' : 'Registra tus datos como cliente.'}</p>
         </div>
 
         <div className={styles.modeTabs}>
@@ -58,31 +56,8 @@ export default function LoginView({ error, onLogin, onRegister }: LoginViewProps
           </form>
         ) : (
           <form onSubmit={onRegister}>
-            <div className={styles.accountSwitch}>
-              <label>
-                <input
-                  name="accountType"
-                  type="radio"
-                  value="CLIENT"
-                  checked={accountType === 'CLIENT'}
-                  onChange={() => setAccountType('CLIENT')}
-                />
-                Cliente
-              </label>
-              <label>
-                <input
-                  name="accountType"
-                  type="radio"
-                  value="SELLER"
-                  checked={accountType === 'SELLER'}
-                  onChange={() => setAccountType('SELLER')}
-                />
-                Productor / trabajador
-              </label>
-            </div>
-
             <label className={styles.field}>
-              <span>{accountType === 'SELLER' ? 'Nombre del responsable' : 'Nombre completo'}</span>
+              <span>Nombre completo</span>
               <input name="name" required />
             </label>
             <label className={styles.field}>
@@ -106,41 +81,9 @@ export default function LoginView({ error, onLogin, onRegister }: LoginViewProps
               <input name="confirmPassword" type="password" minLength={8} required />
             </label>
 
-            {accountType === 'SELLER' && (
-              <div className={styles.producerBlock}>
-                <h2>Datos de productora</h2>
-                <label className={styles.field}>
-                  <span>Nombre comercial</span>
-                  <input name="businessName" required />
-                </label>
-                <label className={styles.field}>
-                  <span>Tipo de productora/taller</span>
-                  <input name="producerType" placeholder="Taller local" required />
-                </label>
-                <label className={styles.field}>
-                  <span>Ubicacion</span>
-                  <input name="location" required />
-                </label>
-                <label className={styles.field}>
-                  <span>Descripcion</span>
-                  <textarea name="description" required />
-                </label>
-                <label className={styles.field}>
-                  <span>Telefono comercial</span>
-                  <input name="businessPhone" type="tel" />
-                </label>
-                <label className={styles.field}>
-                  <span>Direccion comercial</span>
-                  <input name="address" />
-                </label>
-              </div>
-            )}
-
             {error && <span className={styles.error}>{error}</span>}
 
-            <button className="primaryButton" type="submit">
-              {accountType === 'SELLER' ? 'Registrar productora' : 'Crear cuenta'}
-            </button>
+            <button className="primaryButton" type="submit">Crear cuenta</button>
           </form>
         )}
       </section>

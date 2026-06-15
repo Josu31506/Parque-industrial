@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Footer from './components/Footer/Footer';
+import LoadingScreen from './components/LoadingScreen/LoadingScreen';
 import Navbar from './components/Navbar/Navbar';
 import {
   getProducerById as getFallbackProducerById,
@@ -10,12 +11,12 @@ import {
 } from './data/catalog';
 import {
   getMe,
+  getStoredUser,
   login as loginWithBackend,
   logout as logoutFromBackend,
   registerClient,
-  registerSeller,
 } from './services/authService';
-import { getAccessToken } from './services/api';
+import { ApiError, getAccessToken } from './services/api';
 import {
   addCartItem as addRemoteCartItem,
   clearCart as clearRemoteCart,
@@ -36,6 +37,7 @@ import { getMyOrders, getOrderTracking } from './services/ordersService';
 import { getProducers as fetchProducers } from './services/producersService';
 import {
   createProduct as createRemoteProduct,
+  deactivateProduct as deactivateRemoteProduct,
   getProducts as fetchProducts,
   updateProduct as updateRemoteProduct,
   type ProductFormInput,
@@ -100,12 +102,14 @@ import PurchaseRequestsView from './views/PurchaseRequestsView';
 import QuotesView from './views/QuotesView';
 import SellerDashboardView from './views/SellerDashboardView';
 import SupportView from './views/SupportView';
+import UserManagementView from './views/UserManagementView';
 import VerdecitoView from './views/VerdecitoView';
 
 const SHIPPING_COST = 10;
 const DELIVERY_DAYS = 2;
 const PLATFORM_COMMISSION = 0.1;
 const PENDING_QUOTE_ACTION_KEY = 'pendingQuoteAction';
+const AUTH_ME_TIMEOUT_MS = 2000;
 
 type PendingQuoteAction = {
   type: QuoteType | 'OPTIONS';
@@ -185,19 +189,80 @@ const clientViews: ViewName[] = [
 
 const sellerViews: ViewName[] = ['sellerDashboard', 'notifications'];
 
-const adminViews: ViewName[] = ['claims', 'adminQuotes', 'adminQuoteDetail', 'notifications'];
+const advisorViews: ViewName[] = ['claims', 'adminQuotes', 'adminQuoteDetail', 'notifications'];
+
+const adminViews: ViewName[] = [...advisorViews, 'userManagement'];
 
 const canAccessView = (nextView: ViewName, user: User | null) => {
   if (publicViews.includes(nextView)) return true;
   if (!user) return false;
   if (user.role === 'CLIENT') return clientViews.includes(nextView);
   if (user.role === 'SELLER') return sellerViews.includes(nextView);
-  if (user.role === 'ADMIN' || user.role === 'ADVISOR') return adminViews.includes(nextView);
+  if (user.role === 'ADMIN') return adminViews.includes(nextView);
+  if (user.role === 'ADVISOR') return advisorViews.includes(nextView);
   return false;
 };
 
+const viewToPath: Record<ViewName, string> = {
+  home: '/',
+  catalog: '/catalog',
+  verdecito: '/verdecito',
+  productDetail: '/product-detail',
+  cart: '/cart',
+  login: '/login',
+  orders: '/orders',
+  orderTracking: '/order-tracking',
+  orderSuccess: '/order-success',
+  support: '/support',
+  producerProfile: '/producer-profile',
+  purchaseRequests: '/purchase-requests',
+  purchaseRequestDetail: '/purchase-request-detail',
+  sellerDashboard: '/seller-dashboard',
+  sales: '/sales',
+  quoteRequest: '/quote-request',
+  quoteOptions: '/quote-options',
+  quotes: '/quotes',
+  quoteDetail: '/quote-detail',
+  adminQuotes: '/admin/quotes',
+  adminQuoteDetail: '/admin/quote-detail',
+  userManagement: '/admin/users',
+  claims: '/claims',
+  notifications: '/notifications',
+};
+
+const pathToView = Object.entries(viewToPath).reduce<Record<string, ViewName>>((acc, [viewName, path]) => {
+  acc[path] = viewName as ViewName;
+  return acc;
+}, {});
+
+const getInitialView = (): ViewName => {
+  const stateView = window.history.state?.view as ViewName | undefined;
+  if (stateView) return stateView;
+  return pathToView[window.location.pathname] ?? 'home';
+};
+
+const getInitialUser = (): User | null => {
+  if (!getAccessToken()) return null;
+  return getStoredUser();
+};
+
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number) => {
+  let timeoutId: number | undefined;
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new Error('La validacion de sesion tardo demasiado.'));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) window.clearTimeout(timeoutId);
+  }
+};
+
 export default function App() {
-  const [view, setView] = useState<ViewName>('home');
+  const [view, setView] = useState<ViewName>(() => getInitialView());
   const [activeProducerId, setActiveProducerId] = useState('muebles-ves');
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [sellerEditingProductId, setSellerEditingProductId] = useState<string | null>(null);
@@ -210,7 +275,8 @@ export default function App() {
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
   const [catalogError, setCatalogError] = useState('');
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => getInitialUser());
+  const [authLoading, setAuthLoading] = useState(() => Boolean(getAccessToken() && !getStoredUser()));
   const [hasPendingCheckout, setHasPendingCheckout] = useState(false);
   const [pendingCartProductId, setPendingCartProductId] = useState<string | null>(null);
   const [loginError, setLoginError] = useState('');
@@ -229,7 +295,27 @@ export default function App() {
   const [selectedQuoteAdditionalProducts, setSelectedQuoteAdditionalProducts] = useState<string[]>([]);
   const [selectedQuoteType, setSelectedQuoteType] = useState<QuoteType>('REFERENCE_IMAGE');
   const [catalogMode, setCatalogMode] = useState<'normal' | 'quote'>('normal');
+  const isApplyingPopState = useRef(false);
   const sessionRole = mapApiRoleToUiRole(currentUser?.role);
+
+  const setViewWithHistory = (
+    nextView: ViewName,
+    options: { replace?: boolean; scroll?: boolean } = {},
+  ) => {
+    const path = viewToPath[nextView] ?? '/';
+
+    setView(nextView);
+
+    if (options.replace) {
+      window.history.replaceState({ view: nextView }, '', path);
+    } else if (!isApplyingPopState.current && window.location.pathname !== path) {
+      window.history.pushState({ view: nextView }, '', path);
+    }
+
+    if (options.scroll !== false) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -271,6 +357,37 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    window.history.replaceState({ view }, '', viewToPath[view] ?? '/');
+
+    const handlePopState = (event: PopStateEvent) => {
+      const nextView = (event.state?.view as ViewName | undefined)
+        ?? pathToView[window.location.pathname]
+        ?? 'home';
+
+      isApplyingPopState.current = true;
+      setView(nextView);
+      window.requestAnimationFrame(() => {
+        isApplyingPopState.current = false;
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    const handleAuthLogout = () => {
+      setCurrentUser(null);
+      setCartItems([]);
+      setViewWithHistory('login', { replace: true });
+    };
+
+    window.addEventListener('auth:logout', handleAuthLogout);
+    return () => window.removeEventListener('auth:logout', handleAuthLogout);
+  }, []);
+
+  useEffect(() => {
     if (!catalogProducers.length) return;
     const producerForUser = currentUser?.role === 'SELLER'
       ? catalogProducers.find((producer) => producer.userId === currentUser.id)
@@ -289,17 +406,34 @@ export default function App() {
     let isMounted = true;
 
     const restoreSession = async () => {
-      if (!getAccessToken()) return;
+      const token = getAccessToken();
+      const storedUser = getStoredUser();
+
+      if (!token) {
+        setAuthLoading(false);
+        return;
+      }
+
+      if (storedUser) {
+        setCurrentUser(storedUser);
+        setAuthLoading(false);
+      }
 
       try {
-        const user = await getMe();
+        const user = await withTimeout(getMe(), AUTH_ME_TIMEOUT_MS);
         if (!isMounted) return;
 
         setCurrentUser(user);
-      } catch {
+      } catch (error) {
         if (!isMounted) return;
-        logoutFromBackend();
-        setCurrentUser(null);
+        if (error instanceof ApiError && error.status === 401) {
+          logoutFromBackend();
+          setCurrentUser(null);
+        } else if (storedUser) {
+          setCurrentUser(storedUser);
+        }
+      } finally {
+        if (isMounted) setAuthLoading(false);
       }
     };
 
@@ -418,9 +552,10 @@ export default function App() {
   }, [view, currentUser, sessionRole]);
 
   useEffect(() => {
+    if (authLoading) return;
     if (canAccessView(view, currentUser)) return;
-    setView(currentUser ? 'home' : 'login');
-  }, [view, currentUser]);
+    setViewWithHistory(currentUser ? 'home' : 'login', { replace: true });
+  }, [authLoading, view, currentUser]);
 
   const findProducerById = (producerId: string | undefined) => (
     catalogProducers.find((producer) => producer.id === producerId)
@@ -429,13 +564,11 @@ export default function App() {
 
   const navigate = (nextView: ViewName) => {
     if (!canAccessView(nextView, currentUser)) {
-      setView(currentUser ? 'home' : 'login');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setViewWithHistory(currentUser ? 'home' : 'login');
       return;
     }
 
-    setView(nextView);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setViewWithHistory(nextView);
   };
 
   const addNotification = (
@@ -861,8 +994,7 @@ export default function App() {
       }
 
       setHasPendingCheckout(false);
-      setView(nextView);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setViewWithHistory(nextView, { replace: true });
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : 'Correo o contrasena incorrectos.');
     }
@@ -871,7 +1003,6 @@ export default function App() {
   const handleRegister = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const accountType = String(formData.get('accountType') ?? 'CLIENT');
     const password = String(formData.get('password') ?? '');
     const confirmPassword = String(formData.get('confirmPassword') ?? '');
 
@@ -888,25 +1019,12 @@ export default function App() {
         phone: String(formData.get('phone') ?? '').trim() || undefined,
         district: String(formData.get('district') ?? '').trim() || undefined,
       };
-      const user = accountType === 'SELLER'
-        ? await registerSeller({
-          ...baseData,
-          producer: {
-            businessName: String(formData.get('businessName') ?? '').trim(),
-            type: String(formData.get('producerType') ?? '').trim(),
-            location: String(formData.get('location') ?? '').trim(),
-            description: String(formData.get('description') ?? '').trim(),
-            phone: String(formData.get('businessPhone') ?? '').trim() || undefined,
-            address: String(formData.get('address') ?? '').trim() || undefined,
-          },
-        })
-        : await registerClient(baseData);
+      const user = await registerClient(baseData);
 
       setCurrentUser(user);
       setLoginError('');
       setHasPendingCheckout(false);
-      setView(user.role === 'SELLER' ? 'sellerDashboard' : 'home');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setViewWithHistory('home', { replace: true });
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : 'No se pudo completar el registro.');
     }
@@ -921,7 +1039,7 @@ export default function App() {
     setSelectedQuoteAdditionalProducts([]);
     setCartItems([]);
     setLoginError('');
-    navigate('home');
+    setViewWithHistory('login', { replace: true });
   };
 
   const handlePayNow = () => {
@@ -1246,19 +1364,9 @@ export default function App() {
     }
   };
 
-  const refreshCatalogProducts = async () => {
-    try {
-      const products = await fetchProducts();
-      if (products.length) setCatalogProducts(products);
-    } catch {
-      // Keep current catalog when refresh is not available.
-    }
-  };
-
   const handleCreateProduct = async (data: ProductFormInput) => {
     const product = await createRemoteProduct(data);
     setCatalogProducts((current) => [product, ...current.filter((entry) => entry.id !== product.id)]);
-    void refreshCatalogProducts();
     return product;
   };
 
@@ -1267,7 +1375,12 @@ export default function App() {
     setCatalogProducts((current) => current.map((entry) => (
       entry.id === productId ? product : entry
     )));
-    void refreshCatalogProducts();
+    return product;
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    const product = await deactivateRemoteProduct(productId);
+    setCatalogProducts((current) => current.filter((entry) => entry.id !== product.id));
     return product;
   };
 
@@ -1535,6 +1648,7 @@ export default function App() {
           onMarkSaleReady={handleMarkSaleReady}
           onViewProduct={(productId) => openProduct(productId, 'sellerDashboard')}
           onRejectRequest={handleSellerRejectRequest}
+          onDeleteProduct={handleDeleteProduct}
           onUpdateProduct={handleUpdateProduct}
         />
       );
@@ -1616,6 +1730,10 @@ export default function App() {
       );
     }
 
+    if (view === 'userManagement') {
+      return <UserManagementView />;
+    }
+
     return (
       <HomeView
         catalogError={catalogError}
@@ -1631,6 +1749,10 @@ export default function App() {
       />
     );
   };
+
+  if (authLoading && !currentUser) {
+    return <LoadingScreen message="Cargando tu sesión..." />;
+  }
 
   return (
     <div className="appLayout">

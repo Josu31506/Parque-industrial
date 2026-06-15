@@ -91,7 +91,7 @@ export type ProductFormInput = {
   colors?: string[];
 };
 
-const toApiProductBody = (data: ProductFormInput) => ({
+const normalizeProductPayload = (data: ProductFormInput) => ({
   availabilityType: data.requiresConfirmation || data.availabilityType === 'CUSTOM_QUOTE'
     ? 'MADE_TO_ORDER'
     : 'IN_STOCK',
@@ -101,16 +101,17 @@ const toApiProductBody = (data: ProductFormInput) => ({
   customizable: data.customizable ?? false,
   description: data.description,
   dimensions: data.dimensions || undefined,
-  estimatedDispatchDays: data.estimatedDispatchDays ?? undefined,
+  estimatedDispatchDays: data.estimatedDispatchDays === null || data.estimatedDispatchDays === undefined
+    ? undefined
+    : Number(data.estimatedDispatchDays),
   finish: data.finish || undefined,
   imageUrl: data.imageUrl,
   isActive: data.isActive ?? true,
   materials: data.materials || undefined,
-  numericPrice: data.numericPrice,
-  price: data.numericPrice,
+  numericPrice: Number(data.numericPrice),
   producerId: data.producerId || undefined,
   requiresConfirmation: data.requiresConfirmation ?? false,
-  stock: data.stock ?? undefined,
+  stock: data.stock === null || data.stock === undefined ? undefined : Number(data.stock),
   title: data.title,
   type: mapProductTypeToApi(data.type),
 });
@@ -145,19 +146,21 @@ export async function getMyProducts() {
 }
 
 export async function createProduct(data: ProductFormInput) {
-  const product = await postRequest<ApiProduct, ReturnType<typeof toApiProductBody>>('/products', toApiProductBody(data));
+  const product = await postRequest<ApiProduct, ReturnType<typeof normalizeProductPayload>>('/products', normalizeProductPayload(data));
   return mapApiProductToProduct(product);
 }
 
 export async function updateProduct(id: string, data: ProductFormInput) {
-  const product = await patchRequest<ApiProduct, ReturnType<typeof toApiProductBody>>(`/products/${id}`, toApiProductBody(data));
+  const product = await patchRequest<ApiProduct, ReturnType<typeof normalizeProductPayload>>(`/products/${id}`, normalizeProductPayload(data));
   return mapApiProductToProduct(product);
 }
 
 export async function deactivateProduct(id: string) {
   try {
-    await deleteRequest(`/products/${id}`);
+    const product = await deleteRequest<ApiProduct>(`/products/${id}`);
+    return mapApiProductToProduct(product);
   } catch {
-    await patchRequest<ApiProduct, { isActive: boolean }>(`/products/${id}`, { isActive: false });
+    const product = await patchRequest<ApiProduct, { isActive: boolean }>(`/products/${id}`, { isActive: false });
+    return mapApiProductToProduct(product);
   }
 }

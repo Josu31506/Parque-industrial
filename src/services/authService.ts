@@ -1,5 +1,5 @@
 import type { ApiUser, User } from '../types';
-import { clearAccessToken, getRequest, postRequest, setAccessToken } from './api';
+import { AUTH_USER_KEY, clearAuthStorage, getRequest, postRequest, setAccessToken } from './api';
 
 type LoginResponse = {
   accessToken: string;
@@ -19,10 +19,28 @@ export function mapApiUserToUser(apiUser: ApiUser): User {
   };
 }
 
+function persistUser(user: User) {
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+}
+
+export function getStoredUser(): User | null {
+  const storedUser = localStorage.getItem(AUTH_USER_KEY);
+  if (!storedUser) return null;
+
+  try {
+    return JSON.parse(storedUser) as User;
+  } catch {
+    clearAuthStorage();
+    return null;
+  }
+}
+
 export async function login(email: string, password: string) {
   const response = await postRequest<LoginResponse>('/auth/login', { email, password }, { skipAuth: true });
   setAccessToken(response.accessToken);
-  return mapApiUserToUser(response.user);
+  const user = mapApiUserToUser(response.user);
+  persistUser(user);
+  return user;
 }
 
 export type RegisterClientInput = {
@@ -33,34 +51,21 @@ export type RegisterClientInput = {
   district?: string;
 };
 
-export type RegisterSellerInput = RegisterClientInput & {
-  producer: {
-    businessName: string;
-    type: string;
-    location: string;
-    description: string;
-    phone?: string;
-    address?: string;
-  };
-};
-
 export async function registerClient(data: RegisterClientInput) {
   const response = await postRequest<LoginResponse>('/auth/register-client', data, { skipAuth: true });
   setAccessToken(response.accessToken);
-  return mapApiUserToUser(response.user);
-}
-
-export async function registerSeller(data: RegisterSellerInput) {
-  const response = await postRequest<LoginResponse>('/auth/register-seller', data, { skipAuth: true });
-  setAccessToken(response.accessToken);
-  return mapApiUserToUser(response.user);
+  const user = mapApiUserToUser(response.user);
+  persistUser(user);
+  return user;
 }
 
 export async function getMe() {
   const user = await getRequest<ApiUser>('/auth/me');
-  return mapApiUserToUser(user);
+  const mappedUser = mapApiUserToUser(user);
+  persistUser(mappedUser);
+  return mappedUser;
 }
 
 export function logout() {
-  clearAccessToken();
+  clearAuthStorage();
 }

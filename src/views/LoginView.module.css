@@ -76,16 +76,14 @@
   box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.12);
 }
 
-.modeTabs,
-.accountSwitch {
+.modeTabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 22px;
 }
 
-.modeTabs button,
-.accountSwitch label {
+.modeTabs button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -101,26 +99,6 @@
 .modeTabs .active {
   color: #fff;
   background: #0d2f5f;
-}
-
-.accountSwitch input {
-  margin-right: 8px;
-}
-
-.producerBlock {
-  display: grid;
-  gap: 4px;
-  margin: 8px 0 18px;
-  padding: 18px;
-  border: 1px solid #dfe5dd;
-  border-radius: 18px;
-  background: #f8faf6;
-}
-
-.producerBlock h2 {
-  margin: 0 0 10px;
-  color: #0d2f5f;
-  font-size: 1.1rem;
 }
 
 .error {
@@ -180,8 +158,7 @@
     font-size: 1.8rem;
   }
 
-  .modeTabs,
-  .accountSwitch {
+  .modeTabs {
     grid-template-columns: 1fr;
   }
 }

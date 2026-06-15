@@ -1,6 +1,8 @@
 import type { ChangeEvent, FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import imageCompression from 'browser-image-compression';
 import type { ProductFormInput } from '../services/productsService';
+import { uploadProductImage } from '../services/uploadsService';
 import type { Category, Notification, Producer, Product, PurchaseRequest, PurchaseRequestGroup, Sale } from '../types';
 import { getCategoryDisplayName, getSaleDisplayName } from '../utils/displayNames';
 import {
@@ -28,6 +30,7 @@ type SellerDashboardViewProps = {
   onConfirmRequest: (requestId: string, producerId: string, readyDate: string, observation: string) => void;
   onCreateProduct: (data: ProductFormInput) => Promise<Product>;
   onClearEditProduct?: () => void;
+  onDeleteProduct: (productId: string) => Promise<Product>;
   onMarkSaleDelivered: (saleId: string) => void;
   onMarkSaleDispatched: (saleId: string) => void;
   onMarkSaleInPreparation: (saleId: string) => void;
@@ -48,10 +51,37 @@ type ProductFormProps = {
 };
 
 const formatMoney = (value: number) => `S/. ${value.toLocaleString('es-PE')}`;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_PRODUCT_PRICE = 999999.99;
+const SKIP_COMPRESSION_SIZE = 500 * 1024;
+const VALID_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const isDevelopment = import.meta.env.DEV;
 
-const getInputValue = (event: FormEvent<HTMLFormElement>, name: string) => (
-  String(new FormData(event.currentTarget).get(name) ?? '').trim()
+const getInputValue = (formData: FormData, name: string) => (
+  String(formData.get(name) ?? '').trim()
 );
+
+const timeStart = (label: string) => {
+  if (isDevelopment) console.time(label);
+};
+
+const timeEnd = (label: string) => {
+  if (isDevelopment) console.timeEnd(label);
+};
+
+const compressImage = async (file: File): Promise<File> => {
+  if (file.size <= SKIP_COMPRESSION_SIZE) return file;
+
+  const compressedFile = await imageCompression(file, {
+    fileType: 'image/webp',
+    maxSizeMB: 0.8,
+    maxWidthOrHeight: 1200,
+    useWebWorker: true,
+  });
+
+  const normalizedName = file.name.replace(/\.[^.]+$/, '.webp');
+  return new File([compressedFile], normalizedName, { type: 'image/webp', lastModified: Date.now() });
+};
 
 function ProductForm({
   categories,
@@ -67,85 +97,171 @@ function ProductForm({
   const [saleMode, setSaleMode] = useState<'direct' | 'confirmation'>(
     initialRequiresConfirmation ? 'confirmation' : 'direct',
   );
-  const [isSaving, setIsSaving] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState(initialProduct?.image ?? '');
+  const [isOptimizingImage, setIsOptimizingImage] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState('');
+  const isSubmitting = isOptimizingImage || isUploadingImage || isSavingProduct;
 
   useEffect(() => {
     const nextRequiresConfirmation = initialProduct?.requiresConfirmation === true
       || initialProduct?.availabilityType === 'MADE_TO_ORDER';
     setSaleMode(nextRequiresConfirmation ? 'confirmation' : 'direct');
+    setSelectedImage(null);
+    setPreviewUrl(initialProduct?.image ?? '');
+    setStatusMessage('');
     setError('');
-  }, [initialProduct?.id, initialProduct?.availabilityType]);
+  }, [initialProduct?.id, initialProduct?.availabilityType, initialProduct?.image]);
+
+  useEffect(() => () => {
+    if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
 
   const handleSaleModeChange = (event: ChangeEvent<HTMLSelectElement>) => {
     setSaleMode(event.target.value as 'direct' | 'confirmation');
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIsSaving(true);
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     setError('');
 
-    const price = Number(getInputValue(event, 'numericPrice'));
-    const stockValue = getInputValue(event, 'stock');
-    const dispatchValue = getInputValue(event, 'estimatedDispatchDays');
-
-    if (!Number.isFinite(price) || price <= 0) {
-      setError('Ingresa un precio mayor a 0.');
-      setIsSaving(false);
+    if (!file) {
+      setSelectedImage(null);
+      setPreviewUrl(initialProduct?.image ?? '');
       return;
     }
 
-    if (saleMode === 'direct' && (!stockValue || Number(stockValue) < 0)) {
-      setError('El stock es obligatorio para productos en stock.');
-      setIsSaving(false);
+    if (!VALID_IMAGE_TYPES.includes(file.type)) {
+      setError('Solo puedes subir imagenes JPG, PNG o WEBP.');
+      event.target.value = '';
       return;
     }
 
-    if (saleMode === 'confirmation' && (!dispatchValue || Number(dispatchValue) <= 0)) {
-      setError('Indica los dias estimados de preparacion.');
-      setIsSaving(false);
+    if (file.size > MAX_IMAGE_SIZE) {
+      setError('La imagen no debe superar 5 MB.');
+      event.target.value = '';
       return;
     }
 
-    const data: ProductFormInput = {
-      availabilityType: saleMode === 'direct' ? 'IN_STOCK' : 'MADE_TO_ORDER',
-      badge: getInputValue(event, 'badge') || undefined,
-      categoryId: getInputValue(event, 'categoryId') || undefined,
-      colors: getInputValue(event, 'colors')
-        .split(',')
-        .map((color) => color.trim())
-        .filter(Boolean),
-      customizable: new FormData(event.currentTarget).get('customizable') === 'on',
-      description: getInputValue(event, 'description'),
-      dimensions: getInputValue(event, 'dimensions') || undefined,
-      estimatedDispatchDays: dispatchValue ? Number(dispatchValue) : null,
-      finish: getInputValue(event, 'finish') || undefined,
-      imageUrl: getInputValue(event, 'imageUrl'),
-      isActive: new FormData(event.currentTarget).get('isActive') === 'on',
-      materials: getInputValue(event, 'materials') || undefined,
-      numericPrice: price,
-      producerId,
-      requiresConfirmation: saleMode === 'confirmation',
-      stock: saleMode === 'direct' ? Number(stockValue) : null,
-      title: getInputValue(event, 'title'),
-      type: getInputValue(event, 'type') as ProductFormInput['type'],
-    };
+    if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+    setSelectedImage(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    timeStart('total-product-submit');
+    setIsSavingProduct(true);
+    setStatusMessage('Preparando informacion del producto...');
+    setError('');
+
+    const priceText = getInputValue(formData, 'numericPrice');
+    const price = Number(priceText);
+    const stockValue = getInputValue(formData, 'stock');
+    const dispatchValue = getInputValue(formData, 'estimatedDispatchDays');
+    let imageUrl = initialProduct?.image ?? '';
 
     try {
+      if (!Number.isFinite(price) || price <= 0 || price > MAX_PRODUCT_PRICE) {
+        setError('El precio debe estar entre S/ 0.01 y S/ 999,999.99.');
+        return;
+      }
+
+      if (!/^\d+(\.\d{1,2})?$/.test(priceText)) {
+        setError('El precio solo puede tener hasta 2 decimales.');
+        return;
+      }
+
+      if (saleMode === 'direct' && (!stockValue || Number(stockValue) < 0)) {
+        setError('El stock es obligatorio para productos en stock.');
+        return;
+      }
+
+      if (saleMode === 'confirmation' && (!dispatchValue || Number(dispatchValue) <= 0)) {
+        setError('Indica los dias estimados de preparacion.');
+        return;
+      }
+
+      if (!imageUrl && !selectedImage) {
+        setError('Selecciona una imagen clara del producto.');
+        return;
+      }
+
+      if (selectedImage) {
+        setIsOptimizingImage(true);
+        setStatusMessage('Optimizando imagen...');
+        timeStart('optimize-image');
+        const imageToUpload = await compressImage(selectedImage);
+        timeEnd('optimize-image');
+        setIsOptimizingImage(false);
+
+        setIsUploadingImage(true);
+        setStatusMessage('Subiendo imagen optimizada...');
+        timeStart('upload-image');
+        const uploadedImage = await uploadProductImage(imageToUpload);
+        timeEnd('upload-image');
+        imageUrl = uploadedImage.url;
+        setIsUploadingImage(false);
+      }
+
+      const data: ProductFormInput = {
+        availabilityType: saleMode === 'direct' ? 'IN_STOCK' : 'MADE_TO_ORDER',
+        badge: getInputValue(formData, 'badge') || undefined,
+        categoryId: getInputValue(formData, 'categoryId') || undefined,
+        colors: getInputValue(formData, 'colors')
+          .split(',')
+          .map((color) => color.trim())
+          .filter(Boolean),
+        customizable: formData.get('customizable') === 'on',
+        description: getInputValue(formData, 'description'),
+        dimensions: getInputValue(formData, 'dimensions') || undefined,
+        estimatedDispatchDays: dispatchValue ? Number(dispatchValue) : null,
+        finish: getInputValue(formData, 'finish') || undefined,
+        imageUrl,
+        isActive: formData.get('isActive') === 'on',
+        materials: getInputValue(formData, 'materials') || undefined,
+        numericPrice: price,
+        producerId,
+        requiresConfirmation: saleMode === 'confirmation',
+        stock: saleMode === 'direct' ? Number(stockValue) : null,
+        title: getInputValue(formData, 'title'),
+        type: getInputValue(formData, 'type') as ProductFormInput['type'],
+      };
+
+      setIsSavingProduct(true);
+      setStatusMessage('Guardando informacion del producto...');
+      timeStart('save-product');
       if (initialProduct) {
         await onUpdateProduct(initialProduct.id, data);
+        timeEnd('save-product');
         onSaved('Producto actualizado correctamente.');
       } else {
         await onCreateProduct(data);
+        timeEnd('save-product');
         onSaved('Producto publicado correctamente.');
-        event.currentTarget.reset();
+        form.reset();
         setSaleMode('direct');
+        setSelectedImage(null);
+        setPreviewUrl('');
       }
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo guardar el producto.');
+      const fallbackMessage = selectedImage
+        ? 'No se pudo subir la imagen o guardar el producto. Intenta con una imagen mas liviana.'
+        : 'No se pudo guardar el producto.';
+      setError(requestError instanceof Error ? requestError.message : fallbackMessage);
     } finally {
-      setIsSaving(false);
+      timeEnd('total-product-submit');
+      setIsOptimizingImage(false);
+      setIsUploadingImage(false);
+      setIsSavingProduct(false);
+      setStatusMessage('');
     }
   };
 
@@ -163,7 +279,9 @@ function ProductForm({
         )}
       </div>
 
-      <div className={styles.formGridWide}>
+      <div className={styles.formSection}>
+        <h3>Informacion basica</h3>
+        <div className={styles.formGridWide}>
         <label>
           <span>Titulo del producto</span>
           <input name="title" required defaultValue={initialProduct?.title ?? ''} />
@@ -183,14 +301,64 @@ function ProductForm({
           <span>Descripcion</span>
           <textarea name="description" required defaultValue={initialProduct?.description ?? ''} />
         </label>
+        </div>
+      </div>
+
+      <div className={styles.formSection}>
+        <h3>Precio y stock</h3>
+        <div className={styles.formGridWide}>
         <label>
           <span>Precio</span>
-          <input name="numericPrice" type="number" min="0.01" step="0.01" required defaultValue={initialProduct?.numericPrice ?? ''} />
+          <input
+            name="numericPrice"
+            type="number"
+            min="0.01"
+            max="999999.99"
+            step="0.01"
+            required
+            defaultValue={initialProduct?.numericPrice ?? ''}
+          />
         </label>
-        <label>
-          <span>Imagen URL</span>
-          <input name="imageUrl" required defaultValue={initialProduct?.image ?? ''} />
-        </label>
+        {saleMode === 'direct' && (
+          <label>
+            <span>Stock</span>
+            <input name="stock" type="number" min="0" required defaultValue={initialProduct?.stock ?? ''} />
+          </label>
+        )}
+        {saleMode === 'confirmation' && (
+          <label>
+            <span>Dias estimados</span>
+            <input name="estimatedDispatchDays" type="number" min="1" required defaultValue={initialProduct?.estimatedDispatchDays ?? ''} />
+          </label>
+        )}
+        </div>
+      </div>
+
+      <div className={styles.formSection}>
+        <h3>Imagen del producto</h3>
+        <div className={styles.uploadBox}>
+          <div className={styles.previewBox}>
+            {previewUrl ? <img src={previewUrl} alt="Vista previa del producto" /> : <span>Sin imagen</span>}
+          </div>
+          <div className={styles.uploadCopy}>
+            <strong>{initialProduct ? 'Cambiar imagen' : 'Seleccionar imagen'}</strong>
+            <p>Sube una imagen clara del producto en JPG, PNG o WEBP. Maximo 5 MB.</p>
+            <input
+              accept="image/jpeg,image/png,image/webp"
+              disabled={isSubmitting}
+              name="productImage"
+              type="file"
+              onChange={handleImageChange}
+            />
+            {isOptimizingImage && <small>Optimizando imagen...</small>}
+            {isUploadingImage && <small>Subiendo imagen...</small>}
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.formSection}>
+        <h3>Configuracion de venta</h3>
+        <div className={styles.formGridWide}>
         <label>
           <span>Badge</span>
           <select name="badge" defaultValue={initialProduct?.badge ?? ''}>
@@ -216,18 +384,6 @@ function ProductForm({
             <option value="confirmation">Requiere confirmacion</option>
           </select>
         </label>
-        {saleMode === 'direct' && (
-          <label>
-            <span>Stock</span>
-            <input name="stock" type="number" min="0" required defaultValue={initialProduct?.stock ?? ''} />
-          </label>
-        )}
-        {saleMode === 'confirmation' && (
-          <label>
-            <span>Dias estimados</span>
-            <input name="estimatedDispatchDays" type="number" min="1" required defaultValue={initialProduct?.estimatedDispatchDays ?? ''} />
-          </label>
-        )}
         <label>
           <span>Dimensiones</span>
           <input name="dimensions" defaultValue={initialProduct?.technicalDetails?.dimensions ?? ''} />
@@ -244,6 +400,7 @@ function ProductForm({
           <span>Acabado</span>
           <input name="finish" defaultValue={initialProduct?.technicalDetails?.finish ?? ''} />
         </label>
+        </div>
       </div>
 
       <div className={styles.checkGrid}>
@@ -258,10 +415,14 @@ function ProductForm({
       </div>
 
       {error && <p className={styles.error}>{error}</p>}
+      {statusMessage && <p className={styles.progressMessage}>{statusMessage}</p>}
 
       <div className={styles.actions}>
-        <button className="primaryButton" type="submit" disabled={isSaving}>
-          {isSaving ? 'Guardando...' : initialProduct ? 'Guardar cambios' : 'Publicar producto'}
+        <button className="primaryButton" type="submit" disabled={isSubmitting}>
+          {isOptimizingImage && 'Optimizando imagen...'}
+          {isUploadingImage && 'Subiendo imagen...'}
+          {isSavingProduct && !isOptimizingImage && !isUploadingImage && 'Guardando producto...'}
+          {!isSubmitting && 'Guardar producto'}
         </button>
       </div>
     </form>
@@ -281,6 +442,7 @@ export default function SellerDashboardView({
   onConfirmRequest,
   onCreateProduct,
   onClearEditProduct,
+  onDeleteProduct,
   onMarkSaleDelivered,
   onMarkSaleDispatched,
   onMarkSaleInPreparation,
@@ -294,6 +456,8 @@ export default function SellerDashboardView({
   const [readyDates, setReadyDates] = useState<Record<string, string>>({});
   const [observations, setObservations] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
+  const [productPendingDeleteId, setProductPendingDeleteId] = useState<string | null>(null);
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
 
   useEffect(() => {
     setTab(initialTab);
@@ -306,16 +470,31 @@ export default function SellerDashboardView({
     setTab('create');
   }, [initialEditProductId]);
 
-  const producer = producers.find((item) => item.id === activeProducerId);
-  const sellerProducts = products.filter((product) => product.producerId === activeProducerId);
-  const sellerRequests = requests
-    .map((request) => ({
-      request,
-      group: request.groupsByProducer.find((group) => group.producerId === activeProducerId),
-    }))
-    .filter((entry): entry is { request: PurchaseRequest; group: PurchaseRequestGroup } => Boolean(entry.group));
-  const sellerSales = sales.filter((sale) => sale.producerId === activeProducerId);
-  const sellerNotifications = notifications.filter((notification) => notification.role === 'seller').slice(0, 5);
+  const producer = useMemo(
+    () => producers.find((item) => item.id === activeProducerId),
+    [activeProducerId, producers],
+  );
+  const sellerProducts = useMemo(
+    () => products.filter((product) => product.producerId === activeProducerId),
+    [activeProducerId, products],
+  );
+  const sellerRequests = useMemo(
+    () => requests
+      .map((request) => ({
+        request,
+        group: request.groupsByProducer.find((group) => group.producerId === activeProducerId),
+      }))
+      .filter((entry): entry is { request: PurchaseRequest; group: PurchaseRequestGroup } => Boolean(entry.group)),
+    [activeProducerId, requests],
+  );
+  const sellerSales = useMemo(
+    () => sales.filter((sale) => sale.producerId === activeProducerId),
+    [activeProducerId, sales],
+  );
+  const sellerNotifications = useMemo(
+    () => notifications.filter((notification) => notification.role === 'seller').slice(0, 5),
+    [notifications],
+  );
   const editingProduct = sellerProducts.find((product) => product.id === editingProductId);
 
   useEffect(() => {
@@ -350,6 +529,24 @@ export default function SellerDashboardView({
     setTab('products');
   };
 
+  const confirmDeleteProduct = async (productId: string) => {
+    setDeletingProductId(productId);
+    setMessage('');
+
+    try {
+      await onDeleteProduct(productId);
+      setMessage('Producto eliminado correctamente.');
+      setProductPendingDeleteId(null);
+    } catch (deleteError) {
+      const errorMessage = deleteError instanceof Error
+        ? deleteError.message
+        : 'No se pudo eliminar el producto. Intentalo nuevamente.';
+      setMessage(errorMessage);
+    } finally {
+      setDeletingProductId(null);
+    }
+  };
+
   return (
     <main className={styles.page}>
       <section className={`${styles.content} container`}>
@@ -381,41 +578,79 @@ export default function SellerDashboardView({
         )}
 
         {tab === 'products' && (
-          <div className={styles.productGrid}>
+          <div className={styles.productsGrid}>
             {sellerProducts.length === 0 ? (
               <div className={styles.empty}>Aun no tienes productos publicados.</div>
-            ) : sellerProducts.map((product) => (
+            ) : sellerProducts.map((product) => {
+              const isPendingDelete = productPendingDeleteId === product.id;
+              const isDeleting = deletingProductId === product.id;
+
+              return (
               <article className={styles.productCard} key={product.id}>
-                <span
-                  className={styles.productImage}
-                  style={product.image ? { backgroundImage: `url(${product.image})` } : undefined}
-                >
-                  {!product.image && 'Sin imagen'}
-                </span>
-                <div>
+                <div className={styles.productImageWrap}>
+                  {product.image ? (
+                    <img className={styles.productImage} src={product.image} alt={product.title} />
+                  ) : (
+                    <span className={styles.imagePlaceholder}>Sin imagen</span>
+                  )}
+                </div>
+                <div className={styles.cardBadges}>
+                  <span className={`${styles.badge} ${product.isActive === false ? styles.badgeInactive : styles.badgeActive}`}>
+                    {getActiveLabel(product.isActive)}
+                  </span>
+                  <span className={styles.badge}>
+                    {getConfirmationLabel(product.requiresConfirmation)}
+                  </span>
+                  {product.customizable && <span className={styles.badge}>Personalizable</span>}
+                </div>
+                <div className={styles.productBody}>
                   {product.badge && <span className={styles.productBadge}>{product.badge}</span>}
-                  <h2>{product.title}</h2>
-                  <p>{getCategoryDisplayName(undefined, product.category)}</p>
+                  <h2 className={styles.productTitle}>{product.title}</h2>
+                  <p className={styles.productMeta}>{getCategoryDisplayName(undefined, product.category)}</p>
+                  <strong className={styles.productPrice}>{product.price}</strong>
                 </div>
                 <div className={styles.productFacts}>
-                  <p><span>Precio</span><strong>{product.price}</strong></p>
-                  <p><span>Tipo de venta</span><strong>{getConfirmationLabel(product.requiresConfirmation)}</strong></p>
                   <p><span>Stock</span><strong>{product.stock === undefined ? 'No aplica' : `${product.stock} unidades`}</strong></p>
+                  <p><span>Tipo de venta</span><strong>{getConfirmationLabel(product.requiresConfirmation)}</strong></p>
                   {product.estimatedDispatchDays && (
                     <p><span>Dias estimados</span><strong>{product.estimatedDispatchDays}</strong></p>
                   )}
-                  <p><span>Estado</span><strong>{getActiveLabel(product.isActive)}</strong></p>
                 </div>
-                <div className={styles.productActions}>
-                  <button className="primaryButton" type="button" onClick={() => openEditProduct(product)}>
-                    Editar producto
-                  </button>
-                  <button className={styles.ghostButton} type="button" onClick={() => onViewProduct(product.id)}>
-                    Ver detalle
-                  </button>
-                </div>
+                <p className={styles.productDescription}>{product.description}</p>
+                {isPendingDelete ? (
+                  <div className={styles.deleteConfirm}>
+                    <strong>¿Eliminar este producto?</strong>
+                    <p>Esta accion retirara el producto del catalogo.</p>
+                    <div className={styles.confirmActions}>
+                      <button type="button" disabled={isDeleting} onClick={() => setProductPendingDeleteId(null)}>
+                        Cancelar
+                      </button>
+                      <button
+                        className={styles.deleteButton}
+                        type="button"
+                        disabled={isDeleting}
+                        onClick={() => void confirmDeleteProduct(product.id)}
+                      >
+                        {isDeleting ? 'Eliminando...' : 'Si, eliminar'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={styles.cardActions}>
+                    <button className="primaryButton" type="button" onClick={() => openEditProduct(product)}>
+                      Editar producto
+                    </button>
+                    <button className={styles.deleteButton} type="button" onClick={() => setProductPendingDeleteId(product.id)}>
+                      Eliminar producto
+                    </button>
+                    <button className={`${styles.ghostButton} ${styles.detailButton}`} type="button" onClick={() => onViewProduct(product.id)}>
+                      Ver detalle
+                    </button>
+                  </div>
+                )}
               </article>
-            ))}
+              );
+            })}
           </div>
         )}
 
