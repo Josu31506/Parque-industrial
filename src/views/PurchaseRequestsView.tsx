@@ -5,6 +5,8 @@ type PurchaseRequestsViewProps = {
   requests: PurchaseRequest[];
   onNavigate: (view: ViewName) => void;
   onOpenRequest: (requestId: string) => void;
+  onPageChange?: (page: number) => void;
+  pageInfo?: { page: number; total: number; totalPages: number };
 };
 
 const formatMoney = (value: number) => `S/. ${value.toLocaleString('es-PE')}`;
@@ -13,6 +15,8 @@ export default function PurchaseRequestsView({
   requests,
   onNavigate,
   onOpenRequest,
+  onPageChange,
+  pageInfo,
 }: PurchaseRequestsViewProps) {
   return (
     <main className={styles.page}>
@@ -60,6 +64,17 @@ export default function PurchaseRequestsView({
                 </button>
               </article>
             ))}
+            {pageInfo && onPageChange && pageInfo.totalPages > 1 && (
+              <div className={styles.pagination}>
+                <button type="button" disabled={pageInfo.page <= 1} onClick={() => onPageChange(pageInfo.page - 1)}>
+                  Anterior
+                </button>
+                <span>Pagina {pageInfo.page} de {pageInfo.totalPages}</span>
+                <button type="button" disabled={pageInfo.page >= pageInfo.totalPages} onClick={() => onPageChange(pageInfo.page + 1)}>
+                  Siguiente
+                </button>
+              </div>
+            )}
           </div>
         )}
       </section>

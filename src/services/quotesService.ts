@@ -3,6 +3,7 @@ import type {
   ApiQuoteResolution,
   CreateQuoteInput,
   CreateQuoteResolutionInput,
+  PaginatedResponse,
   Quote,
   QuoteResolution,
   QuoteStatus,
@@ -12,6 +13,14 @@ import { getRequest, patchRequest, postRequest } from './api';
 const formatDate = (value: string | null | undefined) => {
   if (!value) return undefined;
   return new Date(value).toLocaleDateString('es-PE');
+};
+
+type ApiQuotesResponse = ApiQuote[] | {
+  items: ApiQuote[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages?: number;
 };
 
 const normalizeReferenceImages = (value: unknown): string[] | undefined => {
@@ -56,19 +65,54 @@ export const mapApiQuoteToQuote = (quote: ApiQuote): Quote => ({
   resolutions: (quote.resolutions ?? []).map(mapApiQuoteResolution),
 });
 
+const normalizeQuotesResponse = (response: ApiQuotesResponse): PaginatedResponse<Quote> => {
+  const items = Array.isArray(response) ? response : response.items;
+  const page = Array.isArray(response) ? 1 : response.page;
+  const limit = Array.isArray(response) ? items.length : response.limit;
+  const total = Array.isArray(response) ? items.length : response.total;
+
+  return {
+    items: items.map(mapApiQuoteToQuote),
+    total,
+    page,
+    limit,
+    totalPages: Array.isArray(response) ? 1 : response.totalPages ?? Math.max(1, Math.ceil(total / limit)),
+  };
+};
+
 export async function createQuote(data: CreateQuoteInput) {
   const response = await postRequest<ApiQuote, CreateQuoteInput>('/quotes', data);
   return mapApiQuoteToQuote(response);
 }
 
-export async function getMyQuotes() {
-  const response = await getRequest<ApiQuote[]>('/quotes/my');
-  return response.map(mapApiQuoteToQuote);
+export async function getMyQuotes(options: { limit?: number; page?: number } = {}) {
+  if (import.meta.env.DEV) console.debug('[api] GET /quotes/my');
+  const params = new URLSearchParams({
+    page: String(options.page ?? 1),
+    limit: String(options.limit ?? 5),
+  });
+  const response = await getRequest<ApiQuotesResponse>(`/quotes/my?${params.toString()}`);
+  return normalizeQuotesResponse(response);
 }
 
 export async function getAllQuotes() {
-  const response = await getRequest<ApiQuote[]>('/quotes');
-  return response.map(mapApiQuoteToQuote);
+  const response = await getRequest<ApiQuotesResponse>('/quotes?page=1&limit=5');
+  return normalizeQuotesResponse(response).items;
+}
+
+export async function getImageQuotes() {
+  const response = await getRequest<ApiQuotesResponse>('/quotes/image?page=1&limit=5');
+  return normalizeQuotesResponse(response).items;
+}
+
+export async function getSellerQuotes(options: { limit?: number; page?: number } = {}) {
+  if (import.meta.env.DEV) console.debug('[api] GET /quotes/seller');
+  const params = new URLSearchParams({
+    page: String(options.page ?? 1),
+    limit: String(options.limit ?? 5),
+  });
+  const response = await getRequest<ApiQuotesResponse>(`/quotes/seller?${params.toString()}`);
+  return normalizeQuotesResponse(response);
 }
 
 export async function getQuoteById(id: string) {

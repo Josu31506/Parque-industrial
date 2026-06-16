@@ -52,6 +52,8 @@ export type QuoteStatus =
   | 'REJECTED'
   | 'EXPIRED';
 
+export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'CANCELLED';
+
 export type ViewName =
   | 'home'
   | 'catalog'
@@ -76,7 +78,15 @@ export type ViewName =
   | 'adminQuoteDetail'
   | 'userManagement'
   | 'claims'
-  | 'notifications';
+  | 'acceptInvitation';
+
+export type PaginatedResponse<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
 
 export type TechnicalDetails = {
   dimensions?: string;
@@ -142,6 +152,7 @@ export type CartItem = {
   id?: string;
   productId: string;
   quantity: number;
+  product?: Product;
 };
 
 export type User = {
@@ -237,17 +248,6 @@ export type Claim = {
   description: string;
   status: ClaimStatus;
   createdAt: string;
-};
-
-export type Notification = {
-  id: string;
-  role: Role;
-  userId?: string;
-  title: string;
-  message: string;
-  createdAt: string;
-  read: boolean;
-  targetView?: ViewName;
 };
 
 export type CatalogFilter = {
@@ -365,7 +365,7 @@ export type ApiProduct = {
   producerId?: string;
   categoryId?: string;
   title: string;
-  description: string;
+  description?: string;
   price?: number | string;
   numericPrice?: number | string;
   imageUrl: string;
@@ -495,18 +495,6 @@ export type ApiClaim = {
   createdAt: string;
 };
 
-export type ApiNotification = {
-  id: string;
-  userId: string;
-  title: string;
-  message: string;
-  type?: string | null;
-  read: boolean;
-  targetType?: string | null;
-  targetId?: string | null;
-  createdAt: string;
-};
-
 export type ApiQuoteResolution = {
   id: string;
   quoteRequestId: string;
@@ -541,4 +529,14 @@ export type ApiQuote = {
   customer?: ApiUser | null;
   product?: ApiProduct | null;
   resolutions?: ApiQuoteResolution[];
+};
+
+export type ApiInvitation = {
+  id: string;
+  email: string;
+  role: Extract<ApiRole, 'SELLER' | 'ADVISOR' | 'ADMIN'>;
+  status: InvitationStatus;
+  expiresAt: string;
+  createdAt: string;
+  producer?: ApiProducer | null;
 };

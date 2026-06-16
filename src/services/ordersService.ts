@@ -6,10 +6,19 @@ import type {
   Order,
   OrderProducerGroup,
   OrderStatus,
+  PaginatedResponse,
+  PaymentOption,
 } from '../types';
-import { getRequest, patchRequest } from './api';
+import { getRequest, patchRequest, postRequest } from './api';
 
 type ApiTrackingResponse = ApiOrder & { groups?: ApiSale[] };
+type ApiOrdersResponse = ApiOrder[] | {
+  items: ApiOrder[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages?: number;
+};
 
 const formatDate = (value: string | Date | null | undefined) => {
   if (!value) return undefined;
@@ -77,9 +86,29 @@ export const mapApiOrderToOrder = (order: ApiOrder | ApiTrackingResponse): Order
   };
 };
 
-export async function getMyOrders() {
-  const response = await getRequest<ApiOrder[]>('/orders/my');
-  return response.map(mapApiOrderToOrder);
+const normalizeOrdersResponse = (response: ApiOrdersResponse): PaginatedResponse<Order> => {
+  const items = Array.isArray(response) ? response : response.items;
+  const page = Array.isArray(response) ? 1 : response.page;
+  const limit = Array.isArray(response) ? items.length : response.limit;
+  const total = Array.isArray(response) ? items.length : response.total;
+
+  return {
+    items: items.map(mapApiOrderToOrder),
+    total,
+    page,
+    limit,
+    totalPages: Array.isArray(response) ? 1 : response.totalPages ?? Math.max(1, Math.ceil(total / limit)),
+  };
+};
+
+export async function getMyOrders(options: { limit?: number; page?: number } = {}) {
+  if (import.meta.env.DEV) console.debug('[api] GET /orders/my');
+  const params = new URLSearchParams({
+    page: String(options.page ?? 1),
+    limit: String(options.limit ?? 5),
+  });
+  const response = await getRequest<ApiOrdersResponse>(`/orders/my?${params.toString()}`);
+  return normalizeOrdersResponse(response);
 }
 
 export async function getOrderById(id: string) {
@@ -88,7 +117,16 @@ export async function getOrderById(id: string) {
 }
 
 export async function getOrderTracking(id: string) {
+  if (import.meta.env.DEV) console.debug(`[api] GET /orders/${id}/tracking`);
   const response = await getRequest<ApiTrackingResponse>(`/orders/${id}/tracking`);
+  return mapApiOrderToOrder(response);
+}
+
+export async function checkoutCart(paymentOption: PaymentOption = 'FULL_PAYMENT') {
+  if (import.meta.env.DEV) console.debug('[api] POST /orders/checkout');
+  const response = await postRequest<ApiOrder, { paymentOption: PaymentOption }>('/orders/checkout', {
+    paymentOption,
+  });
   return mapApiOrderToOrder(response);
 }
 

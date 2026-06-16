@@ -1,11 +1,17 @@
-import type { ApiProduct, AvailabilityType, CatalogFilter, Product, ProductType } from '../types';
+import type { ApiProduct, AvailabilityType, CatalogFilter, PaginatedResponse, Product, ProductType } from '../types';
 import { deleteRequest, getRequest, patchRequest, postRequest } from './api';
 
-type ApiProductsResponse = {
+type ApiProductsResponse = ApiProduct[] | {
   items: ApiProduct[];
   total: number;
   page: number;
   limit: number;
+  totalPages?: number;
+};
+
+type ProductQuery = CatalogFilter & {
+  limit?: number;
+  page?: number;
 };
 
 const money = (value: number | string) => {
@@ -34,7 +40,7 @@ export function mapApiProductToProduct(apiProduct: ApiProduct): Product {
     id: apiProduct.id,
     slug: apiProduct.slug,
     title: apiProduct.title,
-    description: apiProduct.description,
+    description: apiProduct.description ?? '',
     price: money(apiProduct.price ?? numericPrice),
     numericPrice,
     image: apiProduct.imageUrl,
@@ -44,7 +50,7 @@ export function mapApiProductToProduct(apiProduct: ApiProduct): Product {
     producerId: apiProduct.producerId,
     badge: apiProduct.badge,
     type: mapProductType(apiProduct.type),
-    availabilityType: apiProduct.availabilityType === 'CUSTOM_QUOTE' ? 'MADE_TO_ORDER' : apiProduct.availabilityType,
+    availabilityType: apiProduct.availabilityType,
     stock: apiProduct.stock ?? undefined,
     estimatedDispatchDays: apiProduct.estimatedDispatchDays ?? undefined,
     requiresConfirmation,
@@ -60,14 +66,30 @@ export function mapApiProductToProduct(apiProduct: ApiProduct): Product {
   };
 }
 
-const toQuery = (filters?: CatalogFilter) => {
+const toQuery = (filters?: ProductQuery) => {
   const params = new URLSearchParams();
-  if (!filters) return '';
-  if (filters.query) params.set('search', filters.query);
-  if (filters.categoryId) params.set('categoryId', filters.categoryId);
-  if (filters.producer) params.set('producerId', filters.producer);
-  if (filters.type) params.set('type', filters.type === 'eco' ? 'ECO' : 'FEATURED');
+  if (filters?.query) params.set('search', filters.query);
+  if (filters?.categoryId) params.set('categoryId', filters.categoryId);
+  if (filters?.producer) params.set('producerId', filters.producer);
+  if (filters?.type) params.set('type', filters.type === 'eco' ? 'ECO' : 'FEATURED');
+  params.set('page', String(filters?.page ?? 1));
+  params.set('limit', String(filters?.limit ?? 20));
   return params.toString() ? `?${params.toString()}` : '';
+};
+
+const normalizeProductsResponse = (response: ApiProductsResponse): PaginatedResponse<Product> => {
+  const items = Array.isArray(response) ? response : response.items;
+  const page = Array.isArray(response) ? 1 : response.page;
+  const limit = Array.isArray(response) ? items.length : response.limit;
+  const total = Array.isArray(response) ? items.length : response.total;
+
+  return {
+    items: items.map(mapApiProductToProduct),
+    total,
+    page,
+    limit,
+    totalPages: Array.isArray(response) ? 1 : response.totalPages ?? Math.max(1, Math.ceil(total / limit)),
+  };
 };
 
 export type ProductFormInput = {
@@ -116,9 +138,10 @@ const normalizeProductPayload = (data: ProductFormInput) => ({
   type: mapProductTypeToApi(data.type),
 });
 
-export async function getProducts(filters?: CatalogFilter) {
+export async function getProducts(filters?: ProductQuery) {
+  if (import.meta.env.DEV) console.debug('[api] GET /products');
   const response = await getRequest<ApiProductsResponse>(`/products${toQuery(filters)}`, { skipAuth: true });
-  return response.items.map(mapApiProductToProduct);
+  return normalizeProductsResponse(response);
 }
 
 export async function getProductById(id: string) {
@@ -127,22 +150,23 @@ export async function getProductById(id: string) {
 }
 
 export async function getFeaturedProducts() {
-  const products = await getProducts({ type: 'featured' });
-  return products;
+  const products = await getProducts({ limit: 20, type: 'featured' });
+  return products.items;
 }
 
 export async function getEcoProducts() {
-  const products = await getProducts({ type: 'eco' });
-  return products;
+  const products = await getProducts({ limit: 20, type: 'eco' });
+  return products.items;
 }
 
-export async function getMyProducts() {
-  try {
-    const response = await getRequest<ApiProduct[]>('/products/my');
-    return response.map(mapApiProductToProduct);
-  } catch {
-    return [];
-  }
+export async function getMyProducts(options: { limit?: number; page?: number } = {}) {
+  if (import.meta.env.DEV) console.debug('[api] GET /products/my');
+  const params = new URLSearchParams({
+    page: String(options.page ?? 1),
+    limit: String(options.limit ?? 20),
+  });
+  const response = await getRequest<ApiProductsResponse>(`/products/my?${params.toString()}`);
+  return normalizeProductsResponse(response);
 }
 
 export async function createProduct(data: ProductFormInput) {

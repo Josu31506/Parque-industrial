@@ -1,40 +1,30 @@
-import { useEffect, useState } from 'react';
-import { getMyQuotes } from '../services/quotesService';
 import type { Quote, ViewName } from '../types';
 import { getQuoteStatusLabel } from '../utils/statusLabels';
 import styles from './QuotesView.module.css';
 
 type QuotesViewProps = {
+  error?: string;
+  isLoading?: boolean;
   onNavigate: (view: ViewName) => void;
   onOpenQuote: (quoteId: string) => void;
+  onPageChange?: (page: number) => void;
   onQuoteByProduct: () => void;
+  onRefresh?: () => void;
+  pageInfo?: { page: number; total: number; totalPages: number };
+  quotes: Quote[];
 };
 
-export default function QuotesView({ onNavigate, onOpenQuote, onQuoteByProduct }: QuotesViewProps) {
-  const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadQuotes = async () => {
-      try {
-        const response = await getMyQuotes();
-        if (isMounted) setQuotes(response);
-      } catch {
-        if (isMounted) setError('No pudimos cargar tus cotizaciones.');
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-
-    void loadQuotes();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
+export default function QuotesView({
+  error = '',
+  isLoading = false,
+  onNavigate,
+  onOpenQuote,
+  onPageChange,
+  onQuoteByProduct,
+  onRefresh,
+  pageInfo,
+  quotes,
+}: QuotesViewProps) {
   return (
     <main className={styles.page}>
       <section className={`${styles.content} container`}>
@@ -52,7 +42,16 @@ export default function QuotesView({ onNavigate, onOpenQuote, onQuoteByProduct }
         </div>
 
         {isLoading && <p>Cargando cotizaciones...</p>}
-        {error && <p className={styles.error}>{error}</p>}
+        {error && (
+          <div className={styles.empty}>
+            <p className={styles.error}>{error}</p>
+            {onRefresh && (
+              <button className="primaryButton" type="button" onClick={onRefresh}>
+                Reintentar
+              </button>
+            )}
+          </div>
+        )}
 
         {!isLoading && !error && quotes.length === 0 && (
           <div className={styles.empty}>
@@ -88,6 +87,17 @@ export default function QuotesView({ onNavigate, onOpenQuote, onQuoteByProduct }
               </div>
             </article>
           ))}
+          {pageInfo && onPageChange && pageInfo.totalPages > 1 && (
+            <div className={styles.pagination}>
+              <button type="button" disabled={pageInfo.page <= 1} onClick={() => onPageChange(pageInfo.page - 1)}>
+                Anterior
+              </button>
+              <span>Pagina {pageInfo.page} de {pageInfo.totalPages}</span>
+              <button type="button" disabled={pageInfo.page >= pageInfo.totalPages} onClick={() => onPageChange(pageInfo.page + 1)}>
+                Siguiente
+              </button>
+            </div>
+          )}
         </div>
       </section>
     </main>

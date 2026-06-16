@@ -1,5 +1,6 @@
 import type { ApiCartItem, CartItem } from '../types';
 import { deleteRequest, getRequest, patchRequest, postRequest } from './api';
+import { mapApiProductToProduct } from './productsService';
 
 type ApiCartResponse = ApiCartItem[] | { items?: ApiCartItem[] };
 
@@ -7,6 +8,7 @@ const mapApiCartItem = (item: ApiCartItem): CartItem => ({
   id: item.id,
   productId: item.productId,
   quantity: item.quantity,
+  product: item.product ? mapApiProductToProduct(item.product) : undefined,
 });
 
 const normalizeCart = (response: ApiCartResponse): CartItem[] => {
@@ -30,7 +32,7 @@ export async function updateCartItem(cartItemId: string, quantity: number) {
 }
 
 export function removeCartItem(cartItemId: string) {
-  return deleteRequest<ApiCartItem>(`/cart/items/${cartItemId}`);
+  return deleteRequest<ApiCartItem | { id: string; deleted: true }>(`/cart/items/${cartItemId}`);
 }
 
 export function clearCart() {

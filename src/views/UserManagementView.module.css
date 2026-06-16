@@ -94,6 +94,13 @@
   background: #f8faf6;
 }
 
+.formInline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px auto;
+  gap: 14px;
+  align-items: end;
+}
+
 .listHeader,
 .userRow {
   display: grid;
@@ -105,18 +112,38 @@
   align-items: center;
 }
 
-.userList {
+.userList,
+.columnsGrid {
   display: grid;
   gap: 12px;
 }
 
+.columnsGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+
+.groupBlock {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #fbfcfe;
+}
+
+.groupBlock > h3 {
+  margin: 12px 0 0;
+  color: #0f2c59;
+}
+
 .userRow {
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: 1fr;
   align-items: center;
   padding: 16px;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
-  background: #fbfcfe;
+  background: #ffffff;
 }
 
 .role,
@@ -154,6 +181,16 @@
   font-weight: 850;
 }
 
+.inlineActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.inlineActions button {
+  width: 100%;
+}
+
 .success,
 .error {
   display: block;
@@ -174,7 +211,9 @@
 }
 
 @media (max-width: 1040px) {
-  .layout {
+  .layout,
+  .columnsGrid,
+  .formInline {
     grid-template-columns: 1fr;
   }
 }
@@ -197,7 +236,12 @@
   }
 
   .userRow button,
-  .listHeader button {
+  .listHeader button,
+  .formInline button {
     width: 100%;
+  }
+
+  .inlineActions {
+    grid-template-columns: 1fr;
   }
 }

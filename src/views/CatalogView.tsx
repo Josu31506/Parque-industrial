@@ -10,6 +10,8 @@ type CatalogViewProps = {
   initialFilter: CatalogFilter | null;
   isLoadingCatalog?: boolean;
   onProductSelect: (productId: string) => void;
+  onPageChange?: (page: number) => void;
+  pageInfo?: { page: number; total: number; totalPages: number };
   producers: Producer[];
   products: Product[];
   quoteMode?: boolean;
@@ -23,6 +25,8 @@ export default function CatalogView({
   initialFilter,
   isLoadingCatalog,
   onProductSelect,
+  onPageChange,
+  pageInfo,
   producers,
   products,
   quoteMode = false,
@@ -151,16 +155,29 @@ export default function CatalogView({
         {catalogError && <p>{catalogError}</p>}
 
         {!isLoadingCatalog && filteredProducts.length > 0 ? (
-          <div className={styles.productGrid}>
-            {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                {...product}
-                storeName={producers.find((item) => item.id === product.producerId)?.name ?? product.storeName}
-                onClick={() => onProductSelect(product.id)}
-              />
-            ))}
-          </div>
+          <>
+            <div className={styles.productGrid}>
+              {filteredProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  {...product}
+                  storeName={producers.find((item) => item.id === product.producerId)?.name ?? product.storeName}
+                  onClick={() => onProductSelect(product.id)}
+                />
+              ))}
+            </div>
+            {pageInfo && onPageChange && pageInfo.totalPages > 1 && (
+              <div className={styles.pagination}>
+                <button type="button" disabled={pageInfo.page <= 1} onClick={() => onPageChange(pageInfo.page - 1)}>
+                  Anterior
+                </button>
+                <span>Pagina {pageInfo.page} de {pageInfo.totalPages}</span>
+                <button type="button" disabled={pageInfo.page >= pageInfo.totalPages} onClick={() => onPageChange(pageInfo.page + 1)}>
+                  Siguiente
+                </button>
+              </div>
+            )}
+          </>
         ) : !isLoadingCatalog ? (
           <div className={styles.empty}>
             <h2>No encontramos productos con esos filtros</h2>

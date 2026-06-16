@@ -5,12 +5,16 @@ import type { Product } from '../types';
 import styles from './VerdecitoView.module.css';
 
 type VerdecitoViewProps = {
+  catalogError?: string;
+  isLoadingCatalog?: boolean;
   onProductSelect: (productId: string) => void;
   onShowSustainableProducts: () => void;
   products: Product[];
 };
 
 export default function VerdecitoView({
+  catalogError,
+  isLoadingCatalog,
   onProductSelect,
   onShowSustainableProducts,
   products,
@@ -86,15 +90,24 @@ export default function VerdecitoView({
             </button>
           </div>
 
-          <div className={styles.productGrid}>
-            {ecoProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                {...product}
-                onClick={() => onProductSelect(product.id)}
-              />
-            ))}
-          </div>
+          {isLoadingCatalog && <p>Cargando productos sostenibles...</p>}
+          {catalogError && <p>{catalogError}</p>}
+
+          {!isLoadingCatalog && !catalogError && ecoProducts.length === 0 && (
+            <p>No hay productos sostenibles disponibles por el momento.</p>
+          )}
+
+          {!isLoadingCatalog && ecoProducts.length > 0 && (
+            <div className={styles.productGrid}>
+              {ecoProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  {...product}
+                  onClick={() => onProductSelect(product.id)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </main>

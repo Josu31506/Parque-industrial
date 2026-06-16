@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getAllQuotes } from '../services/quotesService';
+import { getImageQuotes } from '../services/quotesService';
 import type { Quote, QuoteStatus } from '../types';
 import { getCustomerDisplayName } from '../utils/displayNames';
 import { getQuoteStatusLabel } from '../utils/statusLabels';
@@ -47,7 +47,7 @@ export default function AdminQuotesView({ onOpenQuote }: AdminQuotesViewProps) {
 
     const loadQuotes = async () => {
       try {
-        const response = await getAllQuotes();
+        const response = await getImageQuotes();
         if (isMounted) setQuotes(response);
       } catch {
         if (isMounted) setError('No pudimos cargar las cotizaciones.');

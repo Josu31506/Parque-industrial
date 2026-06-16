@@ -132,6 +132,30 @@
   color: var(--color-muted);
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--color-primary);
+  font-weight: 800;
+}
+
+.pagination button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(15, 44, 89, 0.18);
+  border-radius: 8px;
+  color: var(--color-primary);
+  background: #fff;
+  font-weight: 900;
+}
+
+.pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 @media (max-width: 1040px) {
   .filters {
     grid-template-columns: repeat(2, 1fr);
@@ -153,7 +177,13 @@
   }
 
   .clearButton,
-  .empty button {
+  .empty button,
+  .pagination button {
     width: 100%;
+  }
+
+  .pagination {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

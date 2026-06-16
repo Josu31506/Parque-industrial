@@ -19,7 +19,7 @@ export function mapApiUserToUser(apiUser: ApiUser): User {
   };
 }
 
-function persistUser(user: User) {
+export function persistUser(user: User) {
   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
 }
 

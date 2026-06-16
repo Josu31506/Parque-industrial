@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import imageCompression from 'browser-image-compression';
 import type { ProductFormInput } from '../services/productsService';
 import { uploadProductImage } from '../services/uploadsService';
-import type { Category, Notification, Producer, Product, PurchaseRequest, PurchaseRequestGroup, Sale } from '../types';
+import type { Category, Producer, Product, PurchaseRequest, PurchaseRequestGroup, Quote, Sale } from '../types';
 import { getCategoryDisplayName, getSaleDisplayName } from '../utils/displayNames';
 import {
   getActiveLabel,
@@ -15,22 +15,25 @@ import {
 } from '../utils/statusLabels';
 import styles from './SellerDashboardView.module.css';
 
-type SellerDashboardTab = 'summary' | 'products' | 'create' | 'requests' | 'sales' | 'notifications';
+type SellerDashboardTab = 'summary' | 'products' | 'create' | 'requests' | 'sales' | 'quotes';
 
 type SellerDashboardViewProps = {
   activeProducerId: string;
   categories: Category[];
+  error?: string;
   initialEditProductId?: string | null;
   initialTab?: SellerDashboardTab;
-  notifications: Notification[];
+  isLoading?: boolean;
   products: Product[];
   producers: Producer[];
+  quotes: Quote[];
   requests: PurchaseRequest[];
   sales: Sale[];
   onConfirmRequest: (requestId: string, producerId: string, readyDate: string, observation: string) => void;
   onCreateProduct: (data: ProductFormInput) => Promise<Product>;
   onClearEditProduct?: () => void;
   onDeleteProduct: (productId: string) => Promise<Product>;
+  onRefresh: () => void;
   onMarkSaleDelivered: (saleId: string) => void;
   onMarkSaleDispatched: (saleId: string) => void;
   onMarkSaleInPreparation: (saleId: string) => void;
@@ -432,17 +435,20 @@ function ProductForm({
 export default function SellerDashboardView({
   activeProducerId,
   categories,
+  error,
   initialEditProductId,
   initialTab = 'summary',
-  notifications,
+  isLoading = false,
   products,
   producers,
+  quotes,
   requests,
   sales,
   onConfirmRequest,
   onCreateProduct,
   onClearEditProduct,
   onDeleteProduct,
+  onRefresh,
   onMarkSaleDelivered,
   onMarkSaleDispatched,
   onMarkSaleInPreparation,
@@ -474,27 +480,14 @@ export default function SellerDashboardView({
     () => producers.find((item) => item.id === activeProducerId),
     [activeProducerId, producers],
   );
-  const sellerProducts = useMemo(
-    () => products.filter((product) => product.producerId === activeProducerId),
-    [activeProducerId, products],
-  );
+  const sellerProducts = products;
   const sellerRequests = useMemo(
     () => requests
-      .map((request) => ({
-        request,
-        group: request.groupsByProducer.find((group) => group.producerId === activeProducerId),
-      }))
+      .flatMap((request) => request.groupsByProducer.map((group) => ({ request, group })))
       .filter((entry): entry is { request: PurchaseRequest; group: PurchaseRequestGroup } => Boolean(entry.group)),
-    [activeProducerId, requests],
+    [requests],
   );
-  const sellerSales = useMemo(
-    () => sales.filter((sale) => sale.producerId === activeProducerId),
-    [activeProducerId, sales],
-  );
-  const sellerNotifications = useMemo(
-    () => notifications.filter((notification) => notification.role === 'seller').slice(0, 5),
-    [notifications],
-  );
+  const sellerSales = sales;
   const editingProduct = sellerProducts.find((product) => product.id === editingProductId);
 
   useEffect(() => {
@@ -561,10 +554,17 @@ export default function SellerDashboardView({
           <button className={tab === 'create' ? styles.active : undefined} type="button" onClick={() => { setEditingProductId(null); setTab('create'); }}>Subir producto</button>
           <button className={tab === 'requests' ? styles.active : undefined} type="button" onClick={() => setTab('requests')}>Solicitudes de compra</button>
           <button className={tab === 'sales' ? styles.active : undefined} type="button" onClick={() => setTab('sales')}>Ventas</button>
-          <button className={tab === 'notifications' ? styles.active : undefined} type="button" onClick={() => setTab('notifications')}>Notificaciones</button>
+          <button className={tab === 'quotes' ? styles.active : undefined} type="button" onClick={() => setTab('quotes')}>Cotizaciones</button>
         </div>
 
         {message && <p className={styles.success}>{message}</p>}
+        {isLoading && <p className={styles.progressMessage}>Cargando panel productor...</p>}
+        {error && (
+          <div className={styles.error}>
+            <p>{error}</p>
+            <button type="button" onClick={onRefresh}>Reintentar</button>
+          </div>
+        )}
 
         {tab === 'summary' && (
           <div className={styles.summaryGrid}>
@@ -579,7 +579,7 @@ export default function SellerDashboardView({
 
         {tab === 'products' && (
           <div className={styles.productsGrid}>
-            {sellerProducts.length === 0 ? (
+            {!isLoading && sellerProducts.length === 0 ? (
               <div className={styles.empty}>Aun no tienes productos publicados.</div>
             ) : sellerProducts.map((product) => {
               const isPendingDelete = productPendingDeleteId === product.id;
@@ -672,7 +672,7 @@ export default function SellerDashboardView({
 
         {tab === 'requests' && (
           <div className={styles.list}>
-            {sellerRequests.length === 0 ? (
+            {!isLoading && sellerRequests.length === 0 ? (
               <div className={styles.empty}>No hay solicitudes de compra para tus productos.</div>
             ) : sellerRequests.map(({ request, group }) => {
               const key = `${request.id}-${group.producerId}`;
@@ -735,7 +735,7 @@ export default function SellerDashboardView({
 
         {tab === 'sales' && (
           <div className={styles.list}>
-            {sellerSales.length === 0 ? (
+            {!isLoading && sellerSales.length === 0 ? (
               <div className={styles.empty}>Aun no tienes ventas confirmadas.</div>
             ) : sellerSales.map((sale) => (
               <article className={styles.card} key={sale.id}>
@@ -779,18 +779,24 @@ export default function SellerDashboardView({
           </div>
         )}
 
-        {tab === 'notifications' && (
+        {tab === 'quotes' && (
           <div className={styles.list}>
-            {sellerNotifications.length === 0 ? (
-              <div className={styles.empty}>No tienes notificaciones recientes.</div>
-            ) : sellerNotifications.map((notification) => (
-              <article className={styles.card} key={notification.id}>
+            {!isLoading && !error && quotes.length === 0 ? (
+              <div className={styles.empty}>Aun no tienes cotizaciones asociadas a tus productos.</div>
+            ) : quotes.map((quote) => (
+              <article className={styles.card} key={quote.id}>
                 <div className={styles.cardHeader}>
                   <div>
-                    <h2>{notification.title}</h2>
-                    <p>{notification.message}</p>
+                    <h2>{quote.title}</h2>
+                    <p>{quote.description}</p>
                   </div>
-                  <span className={styles.status}>{notification.read ? 'Leida' : 'Nueva'}</span>
+                  <span className={styles.status}>{quote.status}</span>
+                </div>
+                <div className={styles.groupFacts}>
+                  <p><span>Producto</span><strong>{quote.product?.title ?? 'Producto base'}</strong></p>
+                  <p><span>Cantidad</span><strong>{quote.quantity}</strong></p>
+                  <p><span>Creada</span><strong>{quote.createdAt}</strong></p>
+                  <p><span>Cliente</span><strong>{quote.customer?.name ?? 'Cliente registrado'}</strong></p>
                 </div>
               </article>
             ))}

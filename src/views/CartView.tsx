@@ -8,6 +8,8 @@ type CartViewProps = {
   products: Product[];
   currentUser: User | null;
   cartNotice?: string;
+  checkoutLoading?: boolean;
+  isLoading?: boolean;
   onCheckout: () => void;
   onDecrease: (productId: string) => void;
   onIncrease: (productId: string) => void;
@@ -25,6 +27,7 @@ const SHIPPING_COST = 10;
 const availabilityLabels = {
   IN_STOCK: 'Stock disponible',
   MADE_TO_ORDER: 'Requiere confirmacion',
+  CUSTOM_QUOTE: 'Requiere cotizacion',
 };
 
 const getAvailabilityLabel = (product: Product) => (
@@ -43,6 +46,8 @@ export default function CartView({
   products,
   currentUser,
   cartNotice,
+  checkoutLoading = false,
+  isLoading = false,
   onCheckout,
   onDecrease,
   onIncrease,
@@ -57,9 +62,11 @@ export default function CartView({
   const items: CartProductItem[] = cartItems
     .map((item) => ({
       ...item,
-      product: products.find((product) => product.id === item.productId),
+      product: item.product ?? products.find((product) => product.id === item.productId),
     }))
     .filter((item): item is CartProductItem => Boolean(item.product));
+  const hasCachedItems = cartItems.length > 0;
+  const isResolvingCachedProducts = hasCachedItems && items.length === 0;
 
   const subtotal = items.reduce(
     (sum, item) => sum + item.product.numericPrice * item.quantity,
@@ -72,7 +79,10 @@ export default function CartView({
     item.product.requiresConfirmation === true
     || item.product.availabilityType === 'MADE_TO_ORDER'
   ));
-  const canPayNow = items.length > 0 && !hasRequiresConfirmation;
+  const hasCustomQuote = items.some((item) => item.product.availabilityType === 'CUSTOM_QUOTE');
+  const canPayNow = items.length > 0 && !hasRequiresConfirmation && !hasCustomQuote;
+  const shouldShowLoading = isLoading && items.length === 0;
+  const shouldShowResolving = !shouldShowLoading && isResolvingCachedProducts;
 
   const openQuoteForProducts = (productsToQuote: Product[]) => {
     const [primaryProduct, ...additionalProducts] = productsToQuote;
@@ -97,10 +107,16 @@ export default function CartView({
   };
 
   const handlePrimaryAction = () => {
+    if (checkoutLoading) return;
     if (!items.length) return;
 
     if (!currentUser) {
       onCheckout();
+      return;
+    }
+
+    if (hasCustomQuote) {
+      openQuoteForProducts(items.map((item) => item.product));
       return;
     }
 
@@ -112,11 +128,13 @@ export default function CartView({
     onPayNow(total);
   };
 
-  const primaryLabel = hasRequiresConfirmation
-      ? 'Solicitar compra'
-      : currentUser
-        ? 'Pagar ahora'
-        : 'Ir a pagar';
+  const primaryLabel = hasCustomQuote
+      ? 'Solicitar cotizacion'
+      : hasRequiresConfirmation
+        ? 'Solicitar compra'
+        : currentUser
+          ? 'Pagar ahora'
+          : 'Ir a pagar';
 
   return (
     <main className={styles.page}>
@@ -127,7 +145,19 @@ export default function CartView({
             <p>Revisa tus productos seleccionados antes de continuar con el pedido.</p>
           </div>
 
-          {items.length === 0 ? (
+          {shouldShowLoading ? (
+            <div className={styles.empty}>
+              <div className={styles.emptyIcon}>...</div>
+              <h2>Cargando carrito...</h2>
+              <p>Estamos sincronizando tus productos guardados con el servidor.</p>
+            </div>
+          ) : shouldShowResolving ? (
+            <div className={styles.empty}>
+              <div className={styles.emptyIcon}>...</div>
+              <h2>Actualizando carrito...</h2>
+              <p>Estamos preparando la informacion de tus productos guardados.</p>
+            </div>
+          ) : items.length === 0 ? (
             <div className={styles.empty}>
               <div className={styles.emptyIcon}>🛒</div>
               <h2>Tu carrito esta vacio</h2>
@@ -141,6 +171,7 @@ export default function CartView({
             </div>
           ) : (
             <div className={styles.items}>
+              {isLoading && <p className={styles.notice}>Actualizando carrito...</p>}
               {items.map(({ product, quantity }) => (
                 <article className={styles.item} key={product.id}>
                   {showQuoteSelection && (
@@ -201,7 +232,13 @@ export default function CartView({
 
           {cartNotice && <p className={styles.notice}>{cartNotice}</p>}
 
-          {hasRequiresConfirmation && (
+          {hasCustomQuote && (
+            <p className={styles.notice}>
+              Este carrito incluye productos que requieren cotizacion personalizada.
+            </p>
+          )}
+
+          {!hasCustomQuote && hasRequiresConfirmation && (
             <p className={styles.notice}>
               Esta compra requiere confirmacion del productor antes de pagar.
             </p>
@@ -239,10 +276,10 @@ export default function CartView({
           <button
             className="primaryButton"
             type="button"
-            disabled={!items.length}
+            disabled={!items.length || checkoutLoading}
             onClick={handlePrimaryAction}
           >
-            {primaryLabel}
+            {checkoutLoading ? 'Procesando pedido...' : primaryLabel}
           </button>
 
           <button className="accentButton" type="button" onClick={() => onNavigate('home')}>

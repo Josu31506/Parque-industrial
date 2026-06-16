@@ -4,6 +4,7 @@ import type {
   ApiPurchaseRequestGroup,
   ApiPurchaseRequestItem,
   MarketplaceItem,
+  PaginatedResponse,
   PaymentOption,
   PurchaseRequest,
   PurchaseRequestGroup,
@@ -18,6 +19,14 @@ const formatDate = (value: string | Date | null | undefined) => {
 };
 
 const numberValue = (value: number | string | undefined) => Number(value ?? 0);
+
+type ApiPurchaseRequestsResponse = ApiPurchaseRequest[] | {
+  items: ApiPurchaseRequest[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages?: number;
+};
 
 const mapRequestItem = (item: ApiPurchaseRequestItem): MarketplaceItem => {
   const unitPrice = numberValue(item.unitPrice);
@@ -65,14 +74,36 @@ export const mapApiPurchaseRequestToPurchaseRequest = (
   };
 };
 
+const normalizePurchaseRequestsResponse = (
+  response: ApiPurchaseRequestsResponse,
+): PaginatedResponse<PurchaseRequest> => {
+  const items = Array.isArray(response) ? response : response.items;
+  const page = Array.isArray(response) ? 1 : response.page;
+  const limit = Array.isArray(response) ? items.length : response.limit;
+  const total = Array.isArray(response) ? items.length : response.total;
+
+  return {
+    items: items.map(mapApiPurchaseRequestToPurchaseRequest),
+    total,
+    page,
+    limit,
+    totalPages: Array.isArray(response) ? 1 : response.totalPages ?? Math.max(1, Math.ceil(total / limit)),
+  };
+};
+
 export async function createPurchaseRequest() {
   const response = await postRequest<ApiPurchaseRequest>('/purchase-requests');
   return mapApiPurchaseRequestToPurchaseRequest(response);
 }
 
-export async function getMyPurchaseRequests() {
-  const response = await getRequest<ApiPurchaseRequest[]>('/purchase-requests/my');
-  return response.map(mapApiPurchaseRequestToPurchaseRequest);
+export async function getMyPurchaseRequests(options: { limit?: number; page?: number } = {}) {
+  if (import.meta.env.DEV) console.debug('[api] GET /purchase-requests/my');
+  const params = new URLSearchParams({
+    page: String(options.page ?? 1),
+    limit: String(options.limit ?? 5),
+  });
+  const response = await getRequest<ApiPurchaseRequestsResponse>(`/purchase-requests/my?${params.toString()}`);
+  return normalizePurchaseRequestsResponse(response);
 }
 
 type ApiSellerPurchaseRequest = {
@@ -88,41 +119,67 @@ type ApiSellerPurchaseRequest = {
   sellerComment?: string | null;
 };
 
-export async function getSellerPurchaseRequests() {
-  const response = await getRequest<ApiSellerPurchaseRequest[]>('/purchase-requests/seller');
-  return response.map((item): PurchaseRequest => {
-    const marketplaceItem: MarketplaceItem = {
-      productId: item.groupId,
-      quantity: item.quantity,
-      title: item.productTitle,
-      price: 'S/. 0',
-      numericPrice: 0,
+type ApiSellerPurchaseRequestsResponse = ApiSellerPurchaseRequest[] | {
+  items: ApiSellerPurchaseRequest[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages?: number;
+};
+
+const mapSellerPurchaseRequest = (item: ApiSellerPurchaseRequest): PurchaseRequest => {
+  const marketplaceItem: MarketplaceItem = {
+    productId: item.groupId,
+    quantity: item.quantity,
+    title: item.productTitle,
+    price: 'S/. 0',
+    numericPrice: 0,
+    producerId: item.producerId ?? 'seller',
+    producerName: 'Tu productora',
+  };
+
+  return {
+    id: item.groupId,
+    customerId: '',
+    customerName: 'Cliente registrado',
+    items: [marketplaceItem],
+    groupsByProducer: [{
+      id: item.groupId,
       producerId: item.producerId ?? 'seller',
       producerName: 'Tu productora',
-    };
-
-    return {
-      id: item.groupId,
-      customerId: '',
-      customerName: 'Cliente registrado',
       items: [marketplaceItem],
-      groupsByProducer: [{
-        id: item.groupId,
-        producerId: item.producerId ?? 'seller',
-        producerName: 'Tu productora',
-        items: [marketplaceItem],
-        status: item.status,
-        readyDate: formatDate(item.estimatedReadyDate),
-        observation: item.sellerComment ?? item.notes ?? undefined,
-      }],
-      status: item.status === 'CONFIRMED'
-        ? 'READY_TO_PAY' as PurchaseRequestStatus
-        : 'PENDING_PRODUCER_CONFIRMATION',
-      createdAt: formatDate(item.requestedAt) ?? '',
-      deliveryDays: 2,
-      total: 0,
-    };
+      status: item.status,
+      readyDate: formatDate(item.estimatedReadyDate),
+      observation: item.sellerComment ?? item.notes ?? undefined,
+    }],
+    status: item.status === 'CONFIRMED'
+      ? 'READY_TO_PAY' as PurchaseRequestStatus
+      : 'PENDING_PRODUCER_CONFIRMATION',
+    createdAt: formatDate(item.requestedAt) ?? '',
+    deliveryDays: 2,
+    total: 0,
+  };
+};
+
+export async function getSellerPurchaseRequests(options: { limit?: number; page?: number } = {}) {
+  if (import.meta.env.DEV) console.debug('[api] GET /purchase-requests/seller');
+  const params = new URLSearchParams({
+    page: String(options.page ?? 1),
+    limit: String(options.limit ?? 5),
   });
+  const response = await getRequest<ApiSellerPurchaseRequestsResponse>(`/purchase-requests/seller?${params.toString()}`);
+  const items = Array.isArray(response) ? response : response.items;
+  const page = Array.isArray(response) ? 1 : response.page;
+  const limit = Array.isArray(response) ? items.length : response.limit;
+  const total = Array.isArray(response) ? items.length : response.total;
+
+  return {
+    items: items.map(mapSellerPurchaseRequest),
+    total,
+    page,
+    limit,
+    totalPages: Array.isArray(response) ? 1 : response.totalPages ?? Math.max(1, Math.ceil(total / limit)),
+  };
 }
 
 export async function getPurchaseRequestById(id: string) {

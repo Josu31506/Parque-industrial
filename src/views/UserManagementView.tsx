@@ -1,12 +1,13 @@
 import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  activateUser,
-  createInternalUser,
-  deactivateUser,
-  getUsers,
-  type InternalUserInput,
-} from '../services/usersService';
+  cancelInvitation,
+  createInvitation,
+  getInvitations,
+  resendInvitation,
+  type Invitation,
+} from '../services/invitationsService';
+import { activateUser, deactivateUser, getUsers, removeUser } from '../services/usersService';
 import type { ApiRole, User } from '../types';
 import styles from './UserManagementView.module.css';
 
@@ -14,68 +15,73 @@ type InternalRole = Extract<ApiRole, 'SELLER' | 'ADVISOR' | 'ADMIN'>;
 
 const roleLabels: Record<ApiRole, string> = {
   CLIENT: 'Cliente',
-  SELLER: 'Productor',
-  ADVISOR: 'Asesor',
-  ADMIN: 'Administrador',
+  SELLER: 'Trabajadores/Productores',
+  ADVISOR: 'Asesores',
+  ADMIN: 'Administradores',
 };
+
+const invitationStatusLabels: Record<Invitation['status'], string> = {
+  PENDING: 'Invitacion pendiente',
+  ACCEPTED: 'Aceptada',
+  EXPIRED: 'Expirada',
+  CANCELLED: 'Cancelada',
+};
+
+const internalRoles: InternalRole[] = ['ADVISOR', 'SELLER', 'ADMIN'];
 
 export default function UserManagementView() {
   const [users, setUsers] = useState<User[]>([]);
-  const [role, setRole] = useState<InternalRole>('SELLER');
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [role, setRole] = useState<InternalRole>('ADVISOR');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const loadUsers = async () => {
+  const loadData = async () => {
     setIsLoading(true);
     try {
-      setUsers(await getUsers());
+      const [nextUsers, nextInvitations] = await Promise.all([
+        getUsers({ limit: 10, page: 1 }),
+        getInvitations(),
+      ]);
+      setUsers(nextUsers.items.filter((user) => user.role && internalRoles.includes(user.role as InternalRole)));
+      setInvitations(nextInvitations);
       setError('');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'No se pudo cargar la lista de usuarios.');
+      setError(loadError instanceof Error ? loadError.message : 'No se pudo cargar la gestion de usuarios.');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    void loadUsers();
+    void loadData();
   }, []);
+
+  const groupedAccess = useMemo(() => internalRoles.map((entryRole) => ({
+    role: entryRole,
+    users: users.filter((user) => user.role === entryRole),
+    invitations: invitations.filter((invitation) => invitation.role === entryRole && invitation.status === 'PENDING'),
+  })), [users, invitations]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
-
-    const data: InternalUserInput = {
-      name: String(formData.get('name') ?? '').trim(),
-      email: String(formData.get('email') ?? '').trim(),
-      phone: String(formData.get('phone') ?? '').trim() || undefined,
-      password: String(formData.get('password') ?? ''),
-      role,
-    };
-
-    if (role === 'SELLER') {
-      data.producer = {
-        businessName: String(formData.get('businessName') ?? '').trim(),
-        type: String(formData.get('producerType') ?? '').trim(),
-        location: String(formData.get('location') ?? '').trim(),
-        description: String(formData.get('description') ?? '').trim(),
-      };
-    }
+    const email = String(formData.get('email') ?? '').trim();
 
     setIsSubmitting(true);
     try {
-      const createdUser = await createInternalUser(data);
-      setUsers((currentUsers) => [createdUser, ...currentUsers]);
-      setMessage(`${roleLabels[createdUser.role ?? role]} creado correctamente.`);
+      const invitation = await createInvitation({ email, role });
+      setInvitations((current) => [invitation, ...current]);
+      setMessage(`Invitacion enviada a ${invitation.email}.`);
       setError('');
       form.reset();
-      setRole('SELLER');
+      setRole('ADVISOR');
     } catch (submitError) {
       setMessage('');
-      setError(submitError instanceof Error ? submitError.message : 'No se pudo crear el usuario interno.');
+      setError(submitError instanceof Error ? submitError.message : 'No se pudo enviar la invitacion.');
     } finally {
       setIsSubmitting(false);
     }
@@ -99,109 +105,137 @@ export default function UserManagementView() {
     }
   };
 
+  const handleRemoveUser = async (user: User) => {
+    if (!user.id) return;
+    const confirmed = window.confirm('Seguro que deseas eliminar este usuario?');
+    if (!confirmed) return;
+
+    try {
+      await removeUser(user.id);
+      setUsers((currentUsers) => currentUsers.filter((entry) => entry.id !== user.id));
+      setMessage(`${user.name} fue eliminado de la gestion activa.`);
+      setError('');
+    } catch (removeError) {
+      setError(removeError instanceof Error ? removeError.message : 'No se pudo eliminar el usuario.');
+    }
+  };
+
+  const handleInvitationAction = async (invitationId: string, action: 'cancel' | 'resend') => {
+    try {
+      const updatedInvitation = action === 'cancel'
+        ? await cancelInvitation(invitationId)
+        : await resendInvitation(invitationId);
+
+      setInvitations((current) => current.map((invitation) => (
+        invitation.id === updatedInvitation.id ? updatedInvitation : invitation
+      )));
+      setMessage(action === 'cancel' ? 'Invitacion cancelada.' : 'Invitacion reenviada.');
+      setError('');
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : 'No se pudo actualizar la invitacion.');
+    }
+  };
+
   return (
     <main className={styles.page}>
       <section className={`${styles.content} container`}>
         <div className={styles.heading}>
           <span className={styles.kicker}>Administracion</span>
           <h1>Gestion de usuarios</h1>
-          <p>Crea trabajadores internos y administra el acceso de usuarios registrados.</p>
+          <p>Invita usuarios internos y administra accesos de asesores, trabajadores y administradores.</p>
         </div>
 
-        <div className={styles.layout}>
-          <form className={styles.formCard} onSubmit={handleSubmit}>
-            <h2>Crear trabajador</h2>
-            <p>Solo los administradores pueden crear productores, asesores o administradores.</p>
+        <form className={styles.formCard} onSubmit={handleSubmit}>
+          <h2>Enviar invitacion</h2>
+          <p>El usuario recibira un enlace para completar su registro y definir su contrasena.</p>
 
-            <label className={styles.field}>
-              <span>Rol interno</span>
-              <select value={role} onChange={(event) => setRole(event.target.value as InternalRole)}>
-                <option value="SELLER">Productor</option>
-                <option value="ADVISOR">Asesor</option>
-                <option value="ADMIN">Administrador</option>
-              </select>
-            </label>
-
-            <label className={styles.field}>
-              <span>Nombre del responsable</span>
-              <input name="name" required />
-            </label>
+          <div className={styles.formInline}>
             <label className={styles.field}>
               <span>Correo</span>
               <input name="email" type="email" required />
             </label>
-            <label className={styles.field}>
-              <span>Telefono</span>
-              <input name="phone" type="tel" />
-            </label>
-            <label className={styles.field}>
-              <span>Contrasena temporal</span>
-              <input name="password" type="password" minLength={8} required />
-            </label>
 
-            {role === 'SELLER' && (
-              <div className={styles.producerBox}>
-                <h3>Productora asociada</h3>
-                <label className={styles.field}>
-                  <span>Nombre del taller</span>
-                  <input name="businessName" required />
-                </label>
-                <label className={styles.field}>
-                  <span>Tipo</span>
-                  <input name="producerType" placeholder="Productora local" required />
-                </label>
-                <label className={styles.field}>
-                  <span>Ubicacion</span>
-                  <input name="location" placeholder="Villa El Salvador" required />
-                </label>
-                <label className={styles.field}>
-                  <span>Descripcion</span>
-                  <textarea name="description" required />
-                </label>
-              </div>
-            )}
-
-            {message && <span className={styles.success}>{message}</span>}
-            {error && <span className={styles.error}>{error}</span>}
+            <label className={styles.field}>
+              <span>Rol</span>
+              <select value={role} onChange={(event) => setRole(event.target.value as InternalRole)}>
+                <option value="ADVISOR">Asesor</option>
+                <option value="SELLER">Trabajador/Productor</option>
+                <option value="ADMIN">Administrador</option>
+              </select>
+            </label>
 
             <button className="primaryButton" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creando...' : 'Crear usuario interno'}
+              {isSubmitting ? 'Enviando...' : 'Enviar invitacion'}
             </button>
-          </form>
-
-          <div className={styles.listCard}>
-            <div className={styles.listHeader}>
-              <h2>Usuarios registrados</h2>
-              <button className="accentButton" type="button" onClick={() => void loadUsers()}>
-                Actualizar
-              </button>
-            </div>
-
-            {isLoading ? (
-              <p>Cargando usuarios...</p>
-            ) : (
-              <div className={styles.userList}>
-                {users.map((user) => (
-                  <article className={styles.userRow} key={user.email}>
-                    <div>
-                      <h3>{user.name}</h3>
-                      <p>{user.email}</p>
-                      {user.phone && <small>{user.phone}</small>}
-                    </div>
-                    <span className={styles.role}>{roleLabels[user.role ?? 'CLIENT']}</span>
-                    <span className={user.isActive === false ? styles.inactive : styles.activeStatus}>
-                      {user.isActive === false ? 'Inactivo' : 'Activo'}
-                    </span>
-                    <button type="button" onClick={() => void toggleUserStatus(user)}>
-                      {user.isActive === false ? 'Activar' : 'Desactivar'}
-                    </button>
-                  </article>
-                ))}
-
-                {!users.length && <p>No hay usuarios registrados.</p>}
-              </div>
-            )}
           </div>
+
+          {message && <span className={styles.success}>{message}</span>}
+          {error && <span className={styles.error}>{error}</span>}
+        </form>
+
+        <div className={styles.listCard}>
+          <div className={styles.listHeader}>
+            <h2>Usuarios internos</h2>
+            <button className="accentButton" type="button" onClick={() => void loadData()}>
+              Actualizar
+            </button>
+          </div>
+
+          {isLoading ? (
+            <p>Cargando usuarios...</p>
+          ) : (
+            <div className={styles.columnsGrid}>
+              {groupedAccess.map((group) => (
+                <section className={styles.groupBlock} key={group.role}>
+                  <h3>{roleLabels[group.role]}</h3>
+
+                  {group.users.length === 0 && group.invitations.length === 0 && (
+                    <p>No hay registros en esta seccion.</p>
+                  )}
+
+                  {group.users.map((user) => (
+                    <article className={styles.userRow} key={user.email}>
+                      <div>
+                        <h3>{user.name}</h3>
+                        <p>{user.email}</p>
+                        <small>{user.createdAt ? `Creado: ${new Date(user.createdAt).toLocaleDateString('es-PE')}` : 'Fecha no disponible'}</small>
+                      </div>
+                      <span className={user.isActive === false ? styles.inactive : styles.activeStatus}>
+                        {user.isActive === false ? 'Inactivo' : 'Activo'}
+                      </span>
+                      <div className={styles.inlineActions}>
+                        <button type="button" onClick={() => void toggleUserStatus(user)}>
+                          {user.isActive === false ? 'Activar' : 'Desactivar'}
+                        </button>
+                        <button type="button" onClick={() => void handleRemoveUser(user)}>
+                          Eliminar
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+
+                  {group.invitations.map((invitation) => (
+                    <article className={styles.userRow} key={invitation.id}>
+                      <div>
+                        <h3>{invitation.email}</h3>
+                        <p>{invitationStatusLabels[invitation.status]}</p>
+                        <small>Invitada: {invitation.createdAt}</small>
+                      </div>
+                      <span className={styles.inactive}>Pendiente</span>
+                      <div className={styles.inlineActions}>
+                        <button type="button" onClick={() => void handleInvitationAction(invitation.id, 'resend')}>
+                          Reenviar
+                        </button>
+                        <button type="button" onClick={() => void handleInvitationAction(invitation.id, 'cancel')}>
+                          Cancelar
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </section>
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </main>

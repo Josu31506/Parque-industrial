@@ -66,11 +66,14 @@ export default function ProductDetailView({
 
   const isEco = product.type === 'eco';
   const hasAvailableStock = Number(product.stock ?? 0) > 0;
-  const requiresConfirmation = product.requiresConfirmation === true
-    || product.availabilityType === 'MADE_TO_ORDER';
+  const requiresCustomQuote = product.availabilityType === 'CUSTOM_QUOTE';
+  const requiresConfirmation = !requiresCustomQuote && (
+    product.requiresConfirmation === true
+    || product.availabilityType === 'MADE_TO_ORDER'
+  );
   const canAddDirectly = product.availabilityType === 'IN_STOCK' && hasAvailableStock && !requiresConfirmation;
   const canRequestPurchase = requiresConfirmation;
-  const isOutOfStock = !hasAvailableStock && !requiresConfirmation;
+  const isOutOfStock = !hasAvailableStock && !requiresConfirmation && !requiresCustomQuote;
   const isSeller = currentUser?.role === 'SELLER';
   const isClientOrGuest = !currentUser || currentUser.role === 'CLIENT';
   const sellerOwnsProduct = isSeller && product.producerId === sellerProducerId;

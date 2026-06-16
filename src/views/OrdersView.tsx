@@ -4,7 +4,9 @@ import type { Order, ViewName } from '../types';
 type OrdersViewProps = {
   orders: Order[];
   onNavigate: (view: ViewName) => void;
+  onPageChange?: (page: number) => void;
   onTrackOrder: (orderId: string) => void;
+  pageInfo?: { page: number; total: number; totalPages: number };
 };
 
 const formatMoney = (value: number) => `S/. ${value.toLocaleString('es-PE')}`;
@@ -12,7 +14,9 @@ const formatMoney = (value: number) => `S/. ${value.toLocaleString('es-PE')}`;
 export default function OrdersView({
   orders,
   onNavigate,
+  onPageChange,
   onTrackOrder,
+  pageInfo,
 }: OrdersViewProps) {
   return (
     <main className={styles.page}>
@@ -75,6 +79,17 @@ export default function OrdersView({
                 </button>
               </article>
             ))}
+            {pageInfo && onPageChange && pageInfo.totalPages > 1 && (
+              <div className={styles.pagination}>
+                <button type="button" disabled={pageInfo.page <= 1} onClick={() => onPageChange(pageInfo.page - 1)}>
+                  Anterior
+                </button>
+                <span>Pagina {pageInfo.page} de {pageInfo.totalPages}</span>
+                <button type="button" disabled={pageInfo.page >= pageInfo.totalPages} onClick={() => onPageChange(pageInfo.page + 1)}>
+                  Siguiente
+                </button>
+              </div>
+            )}
           </div>
         )}
       </section>

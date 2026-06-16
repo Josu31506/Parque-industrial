@@ -340,7 +340,11 @@ export default function HomeView({
           {isLoadingCatalog && <p>Cargando productos...</p>}
           {catalogError && <p>{catalogError}</p>}
 
-          {!isLoadingCatalog && (
+          {!isLoadingCatalog && !catalogError && products.length === 0 && (
+            <p>No hay productos disponibles por el momento.</p>
+          )}
+
+          {!isLoadingCatalog && products.length > 0 && (
             <div className={styles.productGrid}>
               {products.map((product) => (
                 <ProductCard

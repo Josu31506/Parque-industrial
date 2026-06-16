@@ -10,7 +10,6 @@ type NavbarProps = {
   activeView?: ViewName;
   cartCount?: number;
   currentUser: User | null;
-  notificationCount?: number;
   onNavigate: (view: ViewName) => void;
   onLogout?: () => void;
 };
@@ -29,31 +28,24 @@ const customerNav: NavItem[] = [
   { label: 'Pedidos', view: 'orders' },
   { label: 'Solicitudes', view: 'purchaseRequests' },
   { label: 'Cotizaciones', view: 'quotes' },
-  { label: 'Notificaciones', view: 'notifications' },
 ];
 
 const sellerNav: NavItem[] = [
   { label: 'Inicio', view: 'home' },
   { label: 'Catalogo', view: 'catalog' },
   { label: 'Panel productor', view: 'sellerDashboard' },
-  { label: 'Notificaciones', view: 'notifications' },
 ];
 
 const adminNav: NavItem[] = [
   { label: 'Inicio', view: 'home' },
   { label: 'Catalogo', view: 'catalog' },
-  { label: 'Reclamos', view: 'claims' },
   { label: 'Gestion de usuarios', view: 'userManagement' },
-  { label: 'Gestion de cotizaciones', view: 'adminQuotes' },
-  { label: 'Notificaciones', view: 'notifications' },
 ];
 
 const advisorNav: NavItem[] = [
   { label: 'Inicio', view: 'home' },
-  { label: 'Catalogo', view: 'catalog' },
   { label: 'Reclamos', view: 'claims' },
-  { label: 'Gestion de cotizaciones', view: 'adminQuotes' },
-  { label: 'Notificaciones', view: 'notifications' },
+  { label: 'Cotizaciones por imagen', view: 'adminQuotes' },
 ];
 
 const getNavItems = (role: ApiRole | undefined) => {
@@ -68,12 +60,17 @@ export default function Navbar({
   activeView = 'home',
   cartCount = 0,
   currentUser,
-  notificationCount = 0,
   onNavigate,
   onLogout,
 }: NavbarProps) {
   const navItems = getNavItems(currentUser?.role);
-  const accountView: ViewName = currentUser?.role === 'CLIENT' ? 'orders' : 'notifications';
+  const accountView: ViewName = currentUser?.role === 'ADMIN'
+    ? 'userManagement'
+    : currentUser?.role === 'SELLER'
+      ? 'sellerDashboard'
+      : currentUser?.role === 'ADVISOR'
+        ? 'claims'
+        : 'orders';
 
   const handleNavClick = (item: NavItem) => {
     if (item.view) {
@@ -114,7 +111,6 @@ export default function Navbar({
               >
                 {item.label}
                 {item.view === 'cart' && cartCount > 0 ? <span>{cartCount}</span> : null}
-                {item.view === 'notifications' && notificationCount > 0 ? <span>{notificationCount}</span> : null}
               </button>
             </li>
           ))}

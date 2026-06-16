@@ -1,4 +1,4 @@
-import type { ApiSale, MarketplaceItem, Sale } from '../types';
+import type { ApiSale, MarketplaceItem, PaginatedResponse, Sale } from '../types';
 import { getRequest, patchRequest } from './api';
 
 const formatDate = (value: string | Date | null | undefined) => {
@@ -7,6 +7,13 @@ const formatDate = (value: string | Date | null | undefined) => {
 };
 
 const numberValue = (value: number | string | null | undefined) => Number(value ?? 0);
+type ApiSalesResponse = ApiSale[] | {
+  items: ApiSale[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages?: number;
+};
 
 export const mapApiSaleToSale = (sale: ApiSale): Sale => {
   const producerName = sale.producerName ?? sale.producer?.businessName ?? 'Productor no asignado';
@@ -42,9 +49,29 @@ export const mapApiSaleToSale = (sale: ApiSale): Sale => {
   };
 };
 
-export async function getMySales() {
-  const response = await getRequest<ApiSale[]>('/sales/my');
-  return response.map(mapApiSaleToSale);
+const normalizeSalesResponse = (response: ApiSalesResponse): PaginatedResponse<Sale> => {
+  const items = Array.isArray(response) ? response : response.items;
+  const page = Array.isArray(response) ? 1 : response.page;
+  const limit = Array.isArray(response) ? items.length : response.limit;
+  const total = Array.isArray(response) ? items.length : response.total;
+
+  return {
+    items: items.map(mapApiSaleToSale),
+    total,
+    page,
+    limit,
+    totalPages: Array.isArray(response) ? 1 : response.totalPages ?? Math.max(1, Math.ceil(total / limit)),
+  };
+};
+
+export async function getMySales(options: { limit?: number; page?: number } = {}) {
+  if (import.meta.env.DEV) console.debug('[api] GET /sales/my');
+  const params = new URLSearchParams({
+    page: String(options.page ?? 1),
+    limit: String(options.limit ?? 5),
+  });
+  const response = await getRequest<ApiSalesResponse>(`/sales/my?${params.toString()}`);
+  return normalizeSalesResponse(response);
 }
 
 export async function getSaleById(id: string) {
