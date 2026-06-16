@@ -1,5 +1,6 @@
 import type {
   ApiOrder,
+  ApiOrderStatus,
   ApiOrderItem,
   ApiSale,
   MarketplaceItem,
@@ -27,7 +28,7 @@ const formatDate = (value: string | Date | null | undefined) => {
 
 const numberValue = (value: number | string | null | undefined) => Number(value ?? 0);
 
-const mapOrderStatus = (status: string): OrderStatus => {
+const mapOrderStatus = (status: ApiOrderStatus): OrderStatus => {
   if (status === 'DELIVERED' || status === 'CLOSED') return 'Entregado';
   if (status === 'DISPATCHED') return 'En camino';
   if (status === 'ORDER_CONFIRMED' || status === 'PAYMENT_COMPLETED') return 'Pedido confirmado';
@@ -71,6 +72,8 @@ export const mapApiOrderToOrder = (order: ApiOrder | ApiTrackingResponse): Order
 
   return {
     id: order.id,
+    orderNumber: order.orderNumber,
+    apiStatus: order.status,
     date: formatDate(order.createdAt) ?? '',
     items: marketplaceItems.map((item) => ({ productId: item.productId, quantity: item.quantity })),
     marketplaceItems,

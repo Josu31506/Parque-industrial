@@ -21,8 +21,16 @@ export const getCustomerDisplayName = (
   customer?.name?.trim() || customer?.email?.trim() || 'Cliente no disponible'
 );
 
-export const getOrderDisplayName = (order?: { date?: string | null }) => (
-  order?.date ? `Pedido del ${order.date}` : 'Pedido reciente'
+export const formatOrderNumber = (orderNumber?: number, fallbackId?: string) => {
+  if (typeof orderNumber === 'number') {
+    return `Pedido N.° ${String(orderNumber).padStart(6, '0')}`;
+  }
+
+  return fallbackId ? `Pedido N.° ${fallbackId.slice(-6).toUpperCase()}` : 'Pedido';
+};
+
+export const getOrderDisplayName = (order?: { id?: string | null; orderNumber?: number | null }) => (
+  order ? formatOrderNumber(order.orderNumber ?? undefined, order.id ?? undefined) : 'Pedido'
 );
 
 export const getSaleDisplayName = (sale?: { items?: Array<{ title?: string | null }> }) => {

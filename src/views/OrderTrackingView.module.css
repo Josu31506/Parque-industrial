@@ -85,6 +85,15 @@
   padding: 26px;
 }
 
+.claimNotice {
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: #9b2c2c;
+  background: #fff1f1;
+  font-weight: 900;
+}
+
 .step {
   position: relative;
   display: grid;

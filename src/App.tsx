@@ -30,7 +30,7 @@ import {
   rejectClaim,
   resolveClaim,
 } from './services/claimsService';
-import { checkoutCart, getMyOrders, getOrderTracking } from './services/ordersService';
+import { checkoutCart, getMyOrders, getOrderTracking, markOrderDelivered } from './services/ordersService';
 import { getProducers as fetchProducers } from './services/producersService';
 import {
   createProduct as createRemoteProduct,
@@ -52,7 +52,6 @@ import {
 } from './services/purchaseRequestsService';
 import {
   getMySales,
-  markSaleDelivered,
   markSaleDispatched,
   markSaleInPreparation,
   markSaleReadyForDispatch,
@@ -146,6 +145,10 @@ type SellerDashboardCache = {
   sales: Sale[];
 };
 
+type SellerDashboardTab = 'summary' | 'products' | 'create' | 'requests' | 'sales' | 'quotes';
+
+type SellerResourceKey = 'products' | 'quotes' | 'requests' | 'sales';
+
 type TrackingCache = Record<string, CacheEnvelope<Order>>;
 
 type PageInfo = {
@@ -158,6 +161,13 @@ const DEFAULT_PAGE_INFO: PageInfo = {
   page: 1,
   total: 0,
   totalPages: 1,
+};
+
+const SELLER_TAB_STORAGE_KEY = 'sellerDashboardActiveTab';
+const validSellerTabs: SellerDashboardTab[] = ['summary', 'products', 'create', 'requests', 'sales', 'quotes'];
+const readSellerTab = (): SellerDashboardTab => {
+  const storedTab = localStorage.getItem(SELLER_TAB_STORAGE_KEY);
+  return validSellerTabs.includes(storedTab as SellerDashboardTab) ? storedTab as SellerDashboardTab : 'summary';
 };
 
 const readCache = <T,>(key: string): CacheEnvelope<T> | null => {
@@ -395,6 +405,7 @@ export default function App() {
   const [sales, setSales] = useState<Sale[]>(() => initialSellerDashboardCache?.data.sales ?? []);
   const [sellerProducts, setSellerProducts] = useState<Product[]>(() => initialSellerDashboardCache?.data.products ?? []);
   const [sellerQuotes, setSellerQuotes] = useState<Quote[]>(() => initialSellerDashboardCache?.data.quotes ?? []);
+  const [sellerActiveTab, setSellerActiveTab] = useState<SellerDashboardTab>(() => readSellerTab());
   const [clientQuotes, setClientQuotes] = useState<Quote[]>(() => initialClientQuotesCache?.data ?? []);
   const [clientQuotesPageInfo, setClientQuotesPageInfo] = useState<PageInfo>(DEFAULT_PAGE_INFO);
   const [clientQuotesPage, setClientQuotesPage] = useState(1);
@@ -430,8 +441,13 @@ export default function App() {
   const lastClientQuotesFetchRef = useRef(initialClientQuotesCache?.updatedAt ?? 0);
   const claimsRequestRef = useRef<Promise<Claim[]> | null>(null);
   const lastClaimsFetchRef = useRef(initialClaimsCache?.updatedAt ?? 0);
-  const sellerDashboardRequestRef = useRef<Promise<void> | null>(null);
-  const lastSellerDashboardFetchRef = useRef(initialSellerDashboardCache?.updatedAt ?? 0);
+  const sellerDashboardRequestRef = useRef<Partial<Record<SellerResourceKey, Promise<void>>>>({});
+  const lastSellerDashboardFetchRef = useRef<Record<SellerResourceKey, number>>({
+    products: initialSellerDashboardCache?.data.products.length ? initialSellerDashboardCache.updatedAt : 0,
+    quotes: initialSellerDashboardCache?.data.quotes.length ? initialSellerDashboardCache.updatedAt : 0,
+    requests: initialSellerDashboardCache?.data.requests.length ? initialSellerDashboardCache.updatedAt : 0,
+    sales: initialSellerDashboardCache?.data.sales.length ? initialSellerDashboardCache.updatedAt : 0,
+  });
   const trackingRequestRef = useRef<Record<string, Promise<Order>>>({});
   const trackingCacheRef = useRef<TrackingCache>(initialTrackingCache?.data ?? {});
   const sessionRole = mapApiRoleToUiRole(currentUser?.role);
@@ -468,7 +484,12 @@ export default function App() {
   };
 
   const invalidateSellerDashboardCache = () => {
-    lastSellerDashboardFetchRef.current = 0;
+    lastSellerDashboardFetchRef.current = {
+      products: 0,
+      quotes: 0,
+      requests: 0,
+      sales: 0,
+    };
     removeCache(SELLER_DASHBOARD_CACHE_KEY);
   };
 
@@ -526,7 +547,6 @@ export default function App() {
       requests,
       sales: nextSales,
     });
-    lastSellerDashboardFetchRef.current = Date.now();
   };
 
   const updateClaimsState = (updater: Claim[] | ((current: Claim[]) => Claim[])) => {
@@ -701,46 +721,75 @@ export default function App() {
     return claimsRequestRef.current;
   };
 
-  const fetchSellerDashboardOnce = async (options: { force?: boolean } = {}) => {
-    if (!options.force && sellerDashboardRequestRef.current) {
-      return sellerDashboardRequestRef.current;
+  const fetchSellerResourceOnce = async (
+    key: SellerResourceKey,
+    loader: () => Promise<void>,
+    options: { force?: boolean } = {},
+  ) => {
+    if (!options.force && sellerDashboardRequestRef.current[key]) {
+      return sellerDashboardRequestRef.current[key];
     }
 
-    if (!options.force && isCacheFresh(lastSellerDashboardFetchRef.current, MODULE_TTL)) {
+    if (!options.force && isCacheFresh(lastSellerDashboardFetchRef.current[key], MODULE_TTL)) {
       return;
     }
 
-    sellerDashboardRequestRef.current = (async () => {
+    sellerDashboardRequestRef.current[key] = (async () => {
       setSellerDashboardLoading(true);
       setSellerDashboardError('');
 
       try {
-        if (import.meta.env.DEV) console.debug('[seller-dashboard] fetch dashboard data');
-        const [remoteProducts, remoteQuotes, remoteRequests, remoteSales] = await Promise.all([
-          getMyProducts({ limit: 20, page: 1 }),
-          getSellerQuotes({ limit: 5, page: 1 }),
-          getSellerPurchaseRequests({ limit: 5, page: 1 }),
-          getMySales({ limit: 5, page: 1 }),
-        ]);
-
-        setSellerProducts(remoteProducts.items);
-        setSellerQuotes(remoteQuotes.items);
-        setPurchaseRequests(remoteRequests.items);
-        setSales(remoteSales.items);
-        updateSellerDashboardCache(remoteProducts.items, remoteQuotes.items, remoteRequests.items, remoteSales.items);
-
-        const nextProducerId = remoteProducts.items.find((product) => product.producerId)?.producerId;
-        if (nextProducerId) setActiveProducerId(nextProducerId);
+        if (import.meta.env.DEV) console.debug(`[seller-dashboard] fetch ${key}`);
+        await loader();
+        lastSellerDashboardFetchRef.current = {
+          ...lastSellerDashboardFetchRef.current,
+          [key]: Date.now(),
+        };
       } catch (error) {
         setSellerDashboardError('No se pudo cargar el panel productor.');
         throw error;
       } finally {
         setSellerDashboardLoading(false);
-        sellerDashboardRequestRef.current = null;
+        delete sellerDashboardRequestRef.current[key];
       }
     })();
 
-    return sellerDashboardRequestRef.current;
+    return sellerDashboardRequestRef.current[key];
+  };
+
+  const fetchSellerProductsOnce = (options: { force?: boolean } = {}) => fetchSellerResourceOnce('products', async () => {
+    const remoteProducts = await getMyProducts({ limit: 20, page: 1 });
+    setSellerProducts(remoteProducts.items);
+    updateSellerDashboardCache(remoteProducts.items, sellerQuotes, purchaseRequests, sales);
+    const nextProducerId = remoteProducts.items.find((product) => product.producerId)?.producerId;
+    if (nextProducerId) setActiveProducerId(nextProducerId);
+  }, options);
+
+  const fetchSellerQuotesOnce = (options: { force?: boolean } = {}) => fetchSellerResourceOnce('quotes', async () => {
+    const remoteQuotes = await getSellerQuotes({ limit: 5, page: 1 });
+    setSellerQuotes(remoteQuotes.items);
+    updateSellerDashboardCache(sellerProducts, remoteQuotes.items, purchaseRequests, sales);
+  }, options);
+
+  const fetchSellerRequestsOnce = (options: { force?: boolean } = {}) => fetchSellerResourceOnce('requests', async () => {
+    const remoteRequests = await getSellerPurchaseRequests({ limit: 5, page: 1 });
+    setPurchaseRequests(remoteRequests.items);
+    updateSellerDashboardCache(sellerProducts, sellerQuotes, remoteRequests.items, sales);
+  }, options);
+
+  const fetchSellerSalesOnce = (options: { force?: boolean } = {}) => fetchSellerResourceOnce('sales', async () => {
+    const remoteSales = await getMySales({ limit: 5, page: 1 });
+    setSales(remoteSales.items);
+    updateSellerDashboardCache(sellerProducts, sellerQuotes, purchaseRequests, remoteSales.items);
+  }, options);
+
+  const fetchSellerDashboardOnce = async (options: { force?: boolean; tab?: SellerDashboardTab } = {}) => {
+    const tab = options.tab ?? sellerActiveTab;
+    if (tab === 'products' || tab === 'create') return fetchSellerProductsOnce(options);
+    if (tab === 'quotes') return fetchSellerQuotesOnce(options);
+    if (tab === 'requests') return fetchSellerRequestsOnce(options);
+    if (tab === 'sales') return fetchSellerSalesOnce(options);
+    return;
   };
 
   const setViewWithHistory = (
@@ -793,8 +842,8 @@ export default function App() {
       setCartItems([]);
       setCartLoading(false);
       cartRequestRef.current = null;
-      sellerDashboardRequestRef.current = null;
-      lastSellerDashboardFetchRef.current = 0;
+      sellerDashboardRequestRef.current = {};
+      lastSellerDashboardFetchRef.current = { products: 0, quotes: 0, requests: 0, sales: 0 };
       setSellerProducts([]);
       setSellerQuotes([]);
       setClientQuotes([]);
@@ -859,8 +908,8 @@ export default function App() {
           setCartItems([]);
           setCartLoading(false);
           cartRequestRef.current = null;
-          sellerDashboardRequestRef.current = null;
-          lastSellerDashboardFetchRef.current = 0;
+          sellerDashboardRequestRef.current = {};
+          lastSellerDashboardFetchRef.current = { products: 0, quotes: 0, requests: 0, sales: 0 };
           setSellerProducts([]);
           setSellerQuotes([]);
           setClientQuotes([]);
@@ -907,7 +956,7 @@ export default function App() {
         }
 
         if (view === 'sellerDashboard' && currentUser.role === 'SELLER') {
-          await fetchSellerDashboardOnce();
+          await fetchSellerDashboardOnce({ tab: sellerActiveTab });
         }
 
         if (view === 'claims') {
@@ -924,7 +973,7 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, [view, currentUser, sessionRole]);
+  }, [view, currentUser, sessionRole, sellerActiveTab]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -1051,6 +1100,7 @@ export default function App() {
 
     const order: Order = {
       id: `PED-${Date.now()}`,
+      apiStatus: 'PAYMENT_COMPLETED',
       date: formatDate(new Date()),
       items: marketplaceItems.map((item) => ({ productId: item.productId, quantity: item.quantity })),
       marketplaceItems,
@@ -1664,77 +1714,45 @@ export default function App() {
     const sale = sales.find((entry) => entry.id === saleId);
     if (!sale) return;
 
-    try {
-      const updatedSale = await markSaleInPreparation(saleId);
-      setSales((current) => current.map((entry) => (
+    const updatedSale = await markSaleInPreparation(saleId);
+    setSales((current) => {
+      const nextSales = current.map((entry) => (
         entry.id === saleId ? { ...entry, ...updatedSale } : entry
-      )));
-      syncOrderGroupStatus(updatedSale, 'IN_PREPARATION');
-      return;
-    } catch {
-      setSales((current) => current.map((entry) => (
-        entry.id === saleId ? { ...entry, status: 'IN_PREPARATION' } : entry
-      )));
-      syncOrderGroupStatus(sale, 'IN_PREPARATION');
-    }
+      ));
+      updateSellerDashboardCache(sellerProducts, sellerQuotes, purchaseRequests, nextSales);
+      return nextSales;
+    });
+    syncOrderGroupStatus(updatedSale, 'IN_PREPARATION');
   };
 
   const handleMarkSaleReady = async (saleId: string) => {
     const sale = sales.find((entry) => entry.id === saleId);
     if (!sale) return;
 
-    try {
-      const updatedSale = await markSaleReadyForDispatch(saleId);
-      setSales((current) => current.map((entry) => (
+    const updatedSale = await markSaleReadyForDispatch(saleId);
+    setSales((current) => {
+      const nextSales = current.map((entry) => (
         entry.id === saleId ? { ...entry, ...updatedSale } : entry
-      )));
-      syncOrderGroupStatus(updatedSale, 'READY_FOR_DISPATCH');
-      return;
-    } catch {
-      setSales((current) => current.map((entry) => (
-        entry.id === saleId ? { ...entry, status: 'READY_FOR_DISPATCH' } : entry
-      )));
-      syncOrderGroupStatus(sale, 'READY_FOR_DISPATCH');
-    }
-
+      ));
+      updateSellerDashboardCache(sellerProducts, sellerQuotes, purchaseRequests, nextSales);
+      return nextSales;
+    });
+    syncOrderGroupStatus(updatedSale, 'READY_FOR_DISPATCH');
   };
 
   const handleMarkSaleDispatched = async (saleId: string) => {
     const sale = sales.find((entry) => entry.id === saleId);
     if (!sale) return;
 
-    try {
-      const updatedSale = await markSaleDispatched(saleId);
-      setSales((current) => current.map((entry) => (
+    const updatedSale = await markSaleDispatched(saleId);
+    setSales((current) => {
+      const nextSales = current.map((entry) => (
         entry.id === saleId ? { ...entry, ...updatedSale } : entry
-      )));
-      syncOrderGroupStatus(updatedSale, 'DISPATCHED');
-      return;
-    } catch {
-      setSales((current) => current.map((entry) => (
-        entry.id === saleId ? { ...entry, status: 'DISPATCHED' } : entry
-      )));
-      syncOrderGroupStatus(sale, 'DISPATCHED');
-    }
-  };
-
-  const handleMarkSaleDelivered = async (saleId: string) => {
-    const sale = sales.find((entry) => entry.id === saleId);
-    if (!sale) return;
-
-    try {
-      const updatedSale = await markSaleDelivered(saleId);
-      setSales((current) => current.map((entry) => (
-        entry.id === saleId ? { ...entry, ...updatedSale } : entry
-      )));
-      syncOrderGroupStatus(updatedSale, 'DELIVERED');
-      return;
-    } catch {
-      setSales((current) => current.map((entry) => (
-        entry.id === saleId ? { ...entry, status: 'DELIVERED' } : entry
-      )));
-      syncOrderGroupStatus(sale, 'DELIVERED');
-    }
+      ));
+      updateSellerDashboardCache(sellerProducts, sellerQuotes, purchaseRequests, nextSales);
+      return nextSales;
+    });
+    syncOrderGroupStatus(updatedSale, 'DISPATCHED');
   };
 
   const handleCreateProduct = async (data: ProductFormInput) => {
@@ -1863,6 +1881,33 @@ export default function App() {
       // Keep existing order state as fallback.
     }
     navigate('orderTracking');
+  };
+
+  const handleConfirmOrderReceived = async (orderId: string) => {
+    const orderToConfirm = orders.find((entry) => entry.id === orderId)
+      ?? trackingCacheRef.current[orderId]?.data;
+
+    if (orderToConfirm?.apiStatus !== 'DISPATCHED') {
+      setCartNotice('Solo puedes confirmar recepcion cuando el pedido esta en camino.');
+      return;
+    }
+
+    try {
+      const order = await markOrderDelivered(orderId);
+      updateOrdersState((current) => current.map((entry) => (
+        entry.id === orderId ? { ...entry, ...order } : entry
+      )));
+      setSales((current) => current.map((sale) => (
+        sale.orderId === orderId ? { ...sale, status: 'DELIVERED' } : sale
+      )));
+      trackingCacheRef.current = {
+        ...trackingCacheRef.current,
+        [orderId]: { data: order, updatedAt: Date.now() },
+      };
+      writeCache(TRACKING_CACHE_KEY, trackingCacheRef.current);
+    } catch (error) {
+      setCartNotice(error instanceof Error ? error.message : 'No se pudo confirmar la recepcion.');
+    }
   };
 
   const selectedProduct = catalogProducts.find((product) => product.id === selectedProductId)
@@ -2012,6 +2057,7 @@ export default function App() {
         <OrderTrackingView
           order={selectedOrder}
           sales={sales}
+          onConfirmReceived={handleConfirmOrderReceived}
           onCreateClaim={handleCreateClaim}
           onNavigate={navigate}
         />
@@ -2048,7 +2094,7 @@ export default function App() {
           activeProducerId={sellerProducer?.id ?? sellerProducts.find((product) => product.producerId)?.producerId ?? activeProducerId}
           categories={catalogCategories.length ? catalogCategories : fallbackCategories}
           initialEditProductId={sellerEditingProductId}
-          initialTab="summary"
+          initialTab={sellerActiveTab}
           isLoading={sellerDashboardLoading}
           error={sellerDashboardError}
           products={sellerProducts}
@@ -2059,11 +2105,11 @@ export default function App() {
           onClearEditProduct={() => setSellerEditingProductId(null)}
           onConfirmRequest={handleSellerConfirmRequest}
           onCreateProduct={handleCreateProduct}
-          onRefresh={() => void fetchSellerDashboardOnce({ force: true })}
-          onMarkSaleDelivered={handleMarkSaleDelivered}
+          onRefresh={() => void fetchSellerDashboardOnce({ force: true, tab: sellerActiveTab })}
           onMarkSaleDispatched={handleMarkSaleDispatched}
           onMarkSaleInPreparation={handleMarkSaleInPreparation}
           onMarkSaleReady={handleMarkSaleReady}
+          onTabChange={setSellerActiveTab}
           onViewProduct={(productId) => openProduct(productId, 'sellerDashboard')}
           onRejectRequest={handleSellerRejectRequest}
           onDeleteProduct={handleDeleteProduct}

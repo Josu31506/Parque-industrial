@@ -7,6 +7,7 @@ import styles from './OrderTrackingView.module.css';
 type OrderTrackingViewProps = {
   order: Order | undefined;
   sales: Sale[];
+  onConfirmReceived: (orderId: string) => void;
   onCreateClaim: (orderId: string, reason: string, description: string) => void;
   onNavigate: (view: ViewName) => void;
 };
@@ -28,6 +29,8 @@ const getCompletedSteps = (status: OrderStatus | undefined) => {
 };
 
 const producerStatusLabel = (status: Sale['status']) => {
+  if (status === 'NEW_SALE') return 'Pendiente';
+  if (status === 'IN_PREPARATION') return 'En preparacion';
   if (status === 'READY_FOR_DISPATCH') return 'Listo para despacho';
   if (status === 'DISPATCHED') return 'Despachado';
   if (status === 'DELIVERED') return 'Entregado';
@@ -37,6 +40,7 @@ const producerStatusLabel = (status: Sale['status']) => {
 export default function OrderTrackingView({
   order,
   sales,
+  onConfirmReceived,
   onCreateClaim,
   onNavigate,
 }: OrderTrackingViewProps) {
@@ -44,6 +48,8 @@ export default function OrderTrackingView({
   const completedStepIndex = getCompletedSteps(order?.status);
   const orderSales = order ? sales.filter((sale) => sale.orderId === order.id) : [];
   const readyProducers = orderSales.filter((sale) => sale.status === 'READY_FOR_DISPATCH' || sale.status === 'DISPATCHED' || sale.status === 'DELIVERED').length;
+  const canConfirmReceived = order?.apiStatus === 'DISPATCHED';
+  const isInClaim = order?.apiStatus === 'IN_CLAIM' || order?.fundsStatus === 'HELD_BY_CLAIM';
 
   const handleClaimSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -96,6 +102,9 @@ export default function OrderTrackingView({
               </div>
 
               <div className={styles.timeline}>
+                {isInClaim && (
+                  <p className={styles.claimNotice}>Este pedido tiene un reclamo activo. Los fondos permaneceran retenidos hasta resolverlo.</p>
+                )}
                 {steps.map((step, index) => {
                   const isDone = index <= completedStepIndex;
                   const isCurrent = index === completedStepIndex;
@@ -177,9 +186,16 @@ export default function OrderTrackingView({
             Volver a pedidos
           </button>
           {order && (
-            <button className="accentButton" type="button" onClick={() => setShowClaimForm((current) => !current)}>
-              Reportar problema
-            </button>
+            <>
+              {canConfirmReceived && (
+                <button className="primaryButton" type="button" onClick={() => onConfirmReceived(order.id)}>
+                  Confirmar recepcion
+                </button>
+              )}
+              <button className="accentButton" type="button" onClick={() => setShowClaimForm((current) => !current)}>
+                Reportar problema
+              </button>
+            </>
           )}
         </div>
       </section>

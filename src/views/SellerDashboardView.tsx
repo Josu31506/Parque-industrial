@@ -34,10 +34,10 @@ type SellerDashboardViewProps = {
   onClearEditProduct?: () => void;
   onDeleteProduct: (productId: string) => Promise<Product>;
   onRefresh: () => void;
-  onMarkSaleDelivered: (saleId: string) => void;
-  onMarkSaleDispatched: (saleId: string) => void;
-  onMarkSaleInPreparation: (saleId: string) => void;
-  onMarkSaleReady: (saleId: string) => void;
+  onMarkSaleDispatched: (saleId: string) => Promise<void>;
+  onMarkSaleInPreparation: (saleId: string) => Promise<void>;
+  onMarkSaleReady: (saleId: string) => Promise<void>;
+  onTabChange?: (tab: SellerDashboardTab) => void;
   onViewProduct: (productId: string) => void;
   onRejectRequest: (requestId: string, producerId: string, observation: string) => void;
   onUpdateProduct: (productId: string, data: ProductFormInput) => Promise<Product>;
@@ -54,6 +54,7 @@ type ProductFormProps = {
 };
 
 const formatMoney = (value: number) => `S/. ${value.toLocaleString('es-PE')}`;
+const SELLER_TAB_STORAGE_KEY = 'sellerDashboardActiveTab';
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_PRODUCT_PRICE = 999999.99;
 const SKIP_COMPRESSION_SIZE = 500 * 1024;
@@ -70,6 +71,17 @@ const timeStart = (label: string) => {
 
 const timeEnd = (label: string) => {
   if (isDevelopment) console.timeEnd(label);
+};
+
+const validSellerTabs: SellerDashboardTab[] = ['summary', 'products', 'create', 'requests', 'sales', 'quotes'];
+
+const isSellerDashboardTab = (value: string | null): value is SellerDashboardTab => (
+  Boolean(value && validSellerTabs.includes(value as SellerDashboardTab))
+);
+
+const getPersistedSellerTab = (fallback: SellerDashboardTab) => {
+  const storedTab = localStorage.getItem(SELLER_TAB_STORAGE_KEY);
+  return isSellerDashboardTab(storedTab) ? storedTab : fallback;
 };
 
 const compressImage = async (file: File): Promise<File> => {
@@ -449,31 +461,43 @@ export default function SellerDashboardView({
   onClearEditProduct,
   onDeleteProduct,
   onRefresh,
-  onMarkSaleDelivered,
   onMarkSaleDispatched,
   onMarkSaleInPreparation,
   onMarkSaleReady,
+  onTabChange,
   onViewProduct,
   onRejectRequest,
   onUpdateProduct,
 }: SellerDashboardViewProps) {
-  const [tab, setTab] = useState<SellerDashboardTab>(initialTab);
+  const [tab, setTab] = useState<SellerDashboardTab>(() => getPersistedSellerTab(initialTab));
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [readyDates, setReadyDates] = useState<Record<string, string>>({});
   const [observations, setObservations] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
   const [productPendingDeleteId, setProductPendingDeleteId] = useState<string | null>(null);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
+  const [pendingSaleAction, setPendingSaleAction] = useState<{
+    label: string;
+    saleId: string;
+    run: () => Promise<void>;
+  } | null>(null);
+  const [loadingSaleId, setLoadingSaleId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isSellerDashboardTab(localStorage.getItem(SELLER_TAB_STORAGE_KEY))) return;
     setTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    localStorage.setItem(SELLER_TAB_STORAGE_KEY, tab);
+    onTabChange?.(tab);
+  }, [onTabChange, tab]);
 
   useEffect(() => {
     if (!initialEditProductId) return;
     setEditingProductId(initialEditProductId);
     setMessage('');
-    setTab('create');
+    setActiveTab('create');
   }, [initialEditProductId]);
 
   const producer = useMemo(
@@ -497,8 +521,12 @@ export default function SellerDashboardView({
     setMessage('No tienes permiso para editar este producto.');
     setEditingProductId(null);
     onClearEditProduct?.();
-    setTab('products');
+    setActiveTab('products');
   }, [editingProduct, editingProductId, onClearEditProduct, products]);
+
+  const setActiveTab = (nextTab: SellerDashboardTab) => {
+    setTab(nextTab);
+  };
 
   const summary = useMemo(() => ({
     activeProducts: sellerProducts.filter((product) => product.isActive !== false).length,
@@ -512,14 +540,34 @@ export default function SellerDashboardView({
   const openEditProduct = (product: Product) => {
     setEditingProductId(product.id);
     setMessage('');
-    setTab('create');
+    setActiveTab('create');
   };
 
   const handleSaved = (nextMessage: string) => {
     setMessage(nextMessage);
     setEditingProductId(null);
     onClearEditProduct?.();
-    setTab('products');
+    setActiveTab('products');
+  };
+
+  const requestSaleAction = (saleId: string, label: string, run: () => Promise<void>) => {
+    setMessage('');
+    setPendingSaleAction({ saleId, label, run });
+  };
+
+  const confirmSaleAction = async () => {
+    if (!pendingSaleAction) return;
+    setLoadingSaleId(pendingSaleAction.saleId);
+
+    try {
+      await pendingSaleAction.run();
+      setPendingSaleAction(null);
+    } catch (saleError) {
+      setMessage(saleError instanceof Error ? saleError.message : 'No se pudo cambiar el estado de la venta.');
+      setPendingSaleAction(null);
+    } finally {
+      setLoadingSaleId(null);
+    }
   };
 
   const confirmDeleteProduct = async (productId: string) => {
@@ -549,12 +597,12 @@ export default function SellerDashboardView({
         </div>
 
         <div className={styles.tabs}>
-          <button className={tab === 'summary' ? styles.active : undefined} type="button" onClick={() => setTab('summary')}>Resumen</button>
-          <button className={tab === 'products' ? styles.active : undefined} type="button" onClick={() => setTab('products')}>Mis productos</button>
-          <button className={tab === 'create' ? styles.active : undefined} type="button" onClick={() => { setEditingProductId(null); setTab('create'); }}>Subir producto</button>
-          <button className={tab === 'requests' ? styles.active : undefined} type="button" onClick={() => setTab('requests')}>Solicitudes de compra</button>
-          <button className={tab === 'sales' ? styles.active : undefined} type="button" onClick={() => setTab('sales')}>Ventas</button>
-          <button className={tab === 'quotes' ? styles.active : undefined} type="button" onClick={() => setTab('quotes')}>Cotizaciones</button>
+          <button className={tab === 'summary' ? styles.active : undefined} type="button" onClick={() => setActiveTab('summary')}>Resumen</button>
+          <button className={tab === 'products' ? styles.active : undefined} type="button" onClick={() => setActiveTab('products')}>Mis productos</button>
+          <button className={tab === 'create' ? styles.active : undefined} type="button" onClick={() => { setEditingProductId(null); setActiveTab('create'); }}>Subir producto</button>
+          <button className={tab === 'requests' ? styles.active : undefined} type="button" onClick={() => setActiveTab('requests')}>Solicitudes de compra</button>
+          <button className={tab === 'sales' ? styles.active : undefined} type="button" onClick={() => setActiveTab('sales')}>Ventas</button>
+          <button className={tab === 'quotes' ? styles.active : undefined} type="button" onClick={() => setActiveTab('quotes')}>Cotizaciones</button>
         </div>
 
         {message && <p className={styles.success}>{message}</p>}
@@ -662,7 +710,7 @@ export default function SellerDashboardView({
             onCancelEdit={() => {
               setEditingProductId(null);
               onClearEditProduct?.();
-              setTab('products');
+              setActiveTab('products');
             }}
             onCreateProduct={onCreateProduct}
             onSaved={handleSaved}
@@ -737,7 +785,13 @@ export default function SellerDashboardView({
           <div className={styles.list}>
             {!isLoading && sellerSales.length === 0 ? (
               <div className={styles.empty}>Aun no tienes ventas confirmadas.</div>
-            ) : sellerSales.map((sale) => (
+            ) : sellerSales.map((sale) => {
+              const canMarkInPreparation = sale.status === 'NEW_SALE';
+              const canMarkReady = sale.status === 'IN_PREPARATION';
+              const canMarkDispatched = sale.status === 'READY_FOR_DISPATCH';
+              const isLoadingSale = loadingSaleId === sale.id;
+
+              return (
               <article className={styles.card} key={sale.id}>
                 <div className={styles.cardHeader}>
                   <div>
@@ -761,21 +815,40 @@ export default function SellerDashboardView({
                 </div>
 
                 <div className={styles.actions}>
-                  <button className="primaryButton" type="button" onClick={() => onMarkSaleInPreparation(sale.id)}>
-                    En preparacion
+                  <button
+                    className={styles.statusActionButton}
+                    disabled={!canMarkInPreparation || isLoadingSale}
+                    type="button"
+                    onClick={() => requestSaleAction(sale.id, 'En preparación', () => onMarkSaleInPreparation(sale.id))}
+                  >
+                    {isLoadingSale && canMarkInPreparation ? 'Actualizando...' : 'En preparación'}
                   </button>
-                  <button className="accentButton" type="button" onClick={() => onMarkSaleReady(sale.id)}>
-                    Lista para despacho
+                  <button
+                    className={styles.statusActionButton}
+                    disabled={!canMarkReady || isLoadingSale}
+                    type="button"
+                    onClick={() => requestSaleAction(sale.id, 'Lista para despacho', () => onMarkSaleReady(sale.id))}
+                  >
+                    {isLoadingSale && canMarkReady ? 'Actualizando...' : 'Lista para despacho'}
                   </button>
-                  <button className={styles.ghostButton} type="button" onClick={() => onMarkSaleDispatched(sale.id)}>
-                    Despachada
-                  </button>
-                  <button className={styles.ghostButton} type="button" onClick={() => onMarkSaleDelivered(sale.id)}>
-                    Entregada
+                  <button
+                    className={styles.statusActionButton}
+                    disabled={!canMarkDispatched || isLoadingSale}
+                    type="button"
+                    onClick={() => requestSaleAction(sale.id, 'Despachada', () => onMarkSaleDispatched(sale.id))}
+                  >
+                    {isLoadingSale && canMarkDispatched ? 'Actualizando...' : 'Despachada'}
                   </button>
                 </div>
+                {sale.status === 'DISPATCHED' && (
+                  <p className={styles.helperText}>Una vez despachado, el cliente confirmara la recepcion del pedido.</p>
+                )}
+                {sale.status === 'DELIVERED' && (
+                  <p className={styles.helperText}>Venta entregada y confirmada por el cliente.</p>
+                )}
               </article>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -803,6 +876,25 @@ export default function SellerDashboardView({
           </div>
         )}
       </section>
+      {pendingSaleAction && (
+        <div className={styles.modalOverlay} role="presentation">
+          <div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="sale-status-title">
+            <h2 id="sale-status-title">Confirmar cambio de estado</h2>
+            <p>
+              ¿Seguro que deseas cambiar el estado de esta venta a "{pendingSaleAction.label}"?
+              Esta acción no se podrá revertir.
+            </p>
+            <div className={styles.modalActions}>
+              <button type="button" disabled={Boolean(loadingSaleId)} onClick={() => setPendingSaleAction(null)}>
+                Cancelar
+              </button>
+              <button type="button" disabled={Boolean(loadingSaleId)} onClick={() => void confirmSaleAction()}>
+                {loadingSaleId ? 'Confirmando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

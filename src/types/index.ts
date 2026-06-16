@@ -8,6 +8,19 @@ export type ApiRole = 'CLIENT' | 'SELLER' | 'ADVISOR' | 'ADMIN';
 
 export type OrderStatus = 'Pedido confirmado' | 'En preparación' | 'En camino' | 'Entregado';
 
+export type ApiOrderStatus =
+  | 'PAYMENT_PENDING'
+  | 'PAYMENT_PARTIAL'
+  | 'PAYMENT_COMPLETED'
+  | 'ORDER_CONFIRMED'
+  | 'IN_PREPARATION'
+  | 'READY_FOR_DISPATCH'
+  | 'DISPATCHED'
+  | 'DELIVERED'
+  | 'IN_REVIEW'
+  | 'CLOSED'
+  | 'IN_CLAIM';
+
 export type PaymentOption = 'FULL_PAYMENT' | 'HALF_ADVANCE';
 
 export type PaymentStatus = 'FULLY_PAID' | 'PARTIALLY_PAID';
@@ -209,6 +222,8 @@ export type OrderProducerGroup = {
 
 export type Order = {
   id: string;
+  orderNumber?: number;
+  apiStatus: ApiOrderStatus;
   date: string;
   items: CartItem[];
   marketplaceItems?: MarketplaceItem[];
@@ -442,8 +457,9 @@ export type ApiOrderItem = {
 
 export type ApiOrder = {
   id: string;
+  orderNumber?: number;
   customerId: string;
-  status: string;
+  status: ApiOrderStatus;
   total: number;
   paymentOption?: PaymentOption | null;
   paidAmount?: number | null;
