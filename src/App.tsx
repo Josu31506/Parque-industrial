@@ -120,7 +120,8 @@ const TRACKING_CACHE_KEY = 'trackingCache';
 const CATALOG_TTL = 5 * 60 * 1000;
 const CART_TTL = 30 * 1000;
 const MODULE_TTL = 5 * 60 * 1000;
-const TRACKING_TTL = 30 * 1000;
+const ORDERS_TTL = 15 * 1000;
+const TRACKING_TTL = 5 * 1000;
 const AUTH_ME_TIMEOUT_MS = 2000;
 
 type PendingQuoteAction = {
@@ -736,7 +737,7 @@ export default function App() {
   const fetchOrdersOnce = async (options: { force?: boolean; page?: number } = {}) => {
     const requestedPage = options.page ?? ordersPage;
     if (ordersRequestRef.current) return ordersRequestRef.current;
-    if (!options.force && requestedPage === ordersPage && isCacheFresh(lastOrdersFetchRef.current, MODULE_TTL)) return orders;
+    if (!options.force && requestedPage === ordersPage && isCacheFresh(lastOrdersFetchRef.current, ORDERS_TTL)) return orders;
 
     ordersRequestRef.current = getMyOrders({ limit: 5, page: requestedPage })
       .then((remoteOrders) => {
@@ -1058,7 +1059,7 @@ export default function App() {
         }
 
         if (view === 'orders' && sessionRole === 'customer') {
-          await fetchOrdersOnce();
+          await fetchOrdersOnce({ force: true });
         }
 
         if ((view === 'purchaseRequests' || view === 'purchaseRequestDetail') && sessionRole === 'customer') {
@@ -1984,16 +1985,9 @@ export default function App() {
     navigate('purchaseRequestDetail');
   };
 
-  const trackOrder = async (orderId: string) => {
-    setSelectedOrderId(orderId);
-    const currentOrder = orders.find((order) => order.id === orderId);
-    if (currentOrder?.producerGroups?.length) {
-      navigate('orderTracking');
-      return;
-    }
-
+  const refreshOrderTracking = async (orderId: string, options: { allowFreshCache?: boolean } = {}) => {
     const cachedTracking = trackingCacheRef.current[orderId];
-    if (cachedTracking && isCacheFresh(cachedTracking.updatedAt, TRACKING_TTL)) {
+    if (options.allowFreshCache && cachedTracking && isCacheFresh(cachedTracking.updatedAt, TRACKING_TTL)) {
       updateOrdersState((current) => {
         const exists = current.some((entry) => entry.id === orderId);
         if (!exists) return [cachedTracking.data, ...current];
@@ -2001,8 +1995,7 @@ export default function App() {
           entry.id === orderId ? { ...entry, ...cachedTracking.data } : entry
         ));
       });
-      navigate('orderTracking');
-      return;
+      return cachedTracking.data;
     }
 
     try {
@@ -2015,13 +2008,34 @@ export default function App() {
         [orderId]: { data: order, updatedAt: Date.now() },
       };
       writeCache(TRACKING_CACHE_KEY, trackingCacheRef.current);
-      updateOrdersState((current) => current.map((entry) => (
-        entry.id === orderId ? { ...entry, ...order } : entry
-      )));
+      updateOrdersState((current) => {
+        const exists = current.some((entry) => entry.id === orderId);
+        if (!exists) return [order, ...current];
+        return current.map((entry) => (
+          entry.id === orderId ? { ...entry, ...order } : entry
+        ));
+      });
+      return order;
     } catch {
       // Keep existing order state as fallback.
+      return cachedTracking?.data;
     }
+  };
+
+  const trackOrder = async (orderId: string) => {
+    setSelectedOrderId(orderId);
     navigate('orderTracking');
+    await refreshOrderTracking(orderId);
+  };
+
+  const handleRefreshOrders = async () => {
+    if (sessionRole !== 'customer') return;
+    await fetchOrdersOnce({ force: true });
+  };
+
+  const handleRefreshSelectedTracking = async () => {
+    if (!selectedOrderId) return;
+    await refreshOrderTracking(selectedOrderId);
   };
 
   const handleConfirmOrderReceived = async (orderId: string) => {
@@ -2050,6 +2064,25 @@ export default function App() {
       setCartNotice(error instanceof Error ? error.message : 'No se pudo confirmar la recepcion.');
     }
   };
+
+  useEffect(() => {
+    const refreshVisibleClientState = () => {
+      if (document.visibilityState !== 'visible' || currentUser?.role !== 'CLIENT') return;
+
+      if (view === 'orders') {
+        void fetchOrdersOnce({ force: true });
+      }
+
+      if (view === 'orderTracking' && selectedOrderId) {
+        void refreshOrderTracking(selectedOrderId);
+      }
+    };
+
+    document.addEventListener('visibilitychange', refreshVisibleClientState);
+    return () => {
+      document.removeEventListener('visibilitychange', refreshVisibleClientState);
+    };
+  }, [currentUser?.role, selectedOrderId, view]);
 
   const selectedProduct = catalogProducts.find((product) => product.id === selectedProductId)
     ?? sellerProducts.find((product) => product.id === selectedProductId);
@@ -2187,6 +2220,7 @@ export default function App() {
           orders={orders}
           onNavigate={navigate}
           onPageChange={handleOrdersPageChange}
+          onRefresh={handleRefreshOrders}
           onTrackOrder={trackOrder}
           pageInfo={ordersPageInfo}
         />
@@ -2201,6 +2235,7 @@ export default function App() {
           onConfirmReceived={handleConfirmOrderReceived}
           onCreateClaim={handleCreateClaim}
           onNavigate={navigate}
+          onRefresh={handleRefreshSelectedTracking}
         />
       );
     }

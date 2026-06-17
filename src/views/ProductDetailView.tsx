@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { reviews } from '../data/reviews';
-import type { Producer, Product, User } from '../types';
+import { reviews as mockReviews } from '../data/reviews';
+import { createReview, getProductReviews, getReviewEligibility } from '../services/reviewsService';
+import type { Producer, Product, ReviewEligibility, ReviewsSummary, User } from '../types';
 import { getCategoryDisplayName, getProducerDisplayName } from '../utils/displayNames';
 import styles from './ProductDetailView.module.css';
 
@@ -20,7 +21,7 @@ type ProductDetailViewProps = {
   sellerProducerId?: string;
 };
 
-const reviewPageSize = 3;
+const reviewPageSize = 5;
 
 const getImageStyle = (image?: string): CSSProperties => {
   if (!image) return {};
@@ -28,6 +29,15 @@ const getImageStyle = (image?: string): CSSProperties => {
 };
 
 const getValue = (value: string | undefined) => value ?? 'No especificado';
+
+const emptyReviewsSummary: ReviewsSummary = {
+  averageRating: null,
+  totalReviews: 0,
+};
+
+const renderStars = (rating: number) => (
+  Array.from({ length: 5 }, (_, index) => (index < Math.round(rating) ? '★' : '☆')).join('')
+);
 
 export default function ProductDetailView({
   cartMessage,
@@ -43,15 +53,106 @@ export default function ProductDetailView({
 }: ProductDetailViewProps) {
   const [activeTab, setActiveTab] = useState<DetailTab>('description');
   const [reviewPage, setReviewPage] = useState(0);
+  const [productReviews, setProductReviews] = useState(() => (
+    mockReviews.filter((review) => review.productId === product?.id)
+  ));
+  const [reviewsSummary, setReviewsSummary] = useState<ReviewsSummary>(emptyReviewsSummary);
+  const [totalReviewPages, setTotalReviewPages] = useState(1);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewEligibility, setReviewEligibility] = useState<ReviewEligibility | null>(null);
+  const [eligibilityLoading, setEligibilityLoading] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [selectedReviewOrderId, setSelectedReviewOrderId] = useState('');
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewError, setReviewError] = useState('');
+  const [reviewSuccess, setReviewSuccess] = useState('');
+  const [reviewSubmitLoading, setReviewSubmitLoading] = useState(false);
 
   useEffect(() => {
     setActiveTab('description');
     setReviewPage(0);
+    setReviewEligibility(null);
+    setShowReviewForm(false);
+    setSelectedRating(0);
+    setSelectedReviewOrderId('');
+    setReviewComment('');
+    setReviewError('');
+    setReviewSuccess('');
   }, [product?.id]);
 
-  const productReviews = useMemo(() => (
-    reviews.filter((review) => review.productId === product?.id)
+  const fallbackReviews = useMemo(() => (
+    mockReviews.filter((review) => review.productId === product?.id)
   ), [product?.id]);
+
+  useEffect(() => {
+    if (!product?.id) return;
+
+    let ignore = false;
+    setReviewsLoading(true);
+
+    getProductReviews(product.id, reviewPage + 1, reviewPageSize)
+      .then((response) => {
+        if (ignore) return;
+        setProductReviews(response.items);
+        setReviewsSummary(response.summary);
+        setTotalReviewPages(response.totalPages);
+      })
+      .catch(() => {
+        if (ignore) return;
+        const average = fallbackReviews.length > 0
+          ? fallbackReviews.reduce((total, review) => total + review.rating, 0) / fallbackReviews.length
+          : null;
+        setProductReviews(fallbackReviews.slice(
+          reviewPage * reviewPageSize,
+          reviewPage * reviewPageSize + reviewPageSize,
+        ));
+        setReviewsSummary({
+          averageRating: average,
+          totalReviews: fallbackReviews.length,
+        });
+        setTotalReviewPages(Math.max(1, Math.ceil(fallbackReviews.length / reviewPageSize)));
+      })
+      .finally(() => {
+        if (!ignore) setReviewsLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [fallbackReviews, product?.id, reviewPage]);
+
+  useEffect(() => {
+    if (activeTab !== 'reviews' || !product?.id || currentUser?.role !== 'CLIENT') return;
+
+    let ignore = false;
+    setEligibilityLoading(true);
+    setReviewEligibility(null);
+
+    getReviewEligibility(product.id)
+      .then((eligibility) => {
+        if (ignore) return;
+        setReviewEligibility(eligibility);
+        setSelectedReviewOrderId(eligibility.eligibleOrders[0]?.orderId ?? '');
+      })
+      .catch((error) => {
+        if (ignore) return;
+        setReviewEligibility({
+          canReview: false,
+          reason: error instanceof Error
+            ? error.message
+            : 'Podrás reseñar este producto cuando completes una compra entregada.',
+          eligibleOrders: [],
+        });
+      })
+      .finally(() => {
+        if (!ignore) setEligibilityLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [activeTab, currentUser?.role, product?.id]);
 
   if (!product) {
     return (
@@ -77,15 +178,78 @@ export default function ProductDetailView({
   const isSeller = currentUser?.role === 'SELLER';
   const isClientOrGuest = !currentUser || currentUser.role === 'CLIENT';
   const sellerOwnsProduct = isSeller && product.producerId === sellerProducerId;
-  const averageRating = productReviews.length > 0
-    ? productReviews.reduce((total, review) => total + review.rating, 0) / productReviews.length
-    : product.rating;
-  const totalReviewPages = Math.max(1, Math.ceil(productReviews.length / reviewPageSize));
-  const visibleReviews = productReviews.slice(
-    reviewPage * reviewPageSize,
-    reviewPage * reviewPageSize + reviewPageSize,
-  );
+  const averageRating = reviewsSummary.averageRating ?? product.rating;
+  const visibleReviews = productReviews;
   const details = product.technicalDetails;
+  const reviewCount = reviewsSummary.totalReviews;
+
+  const resetReviewForm = () => {
+    setShowReviewForm(false);
+    setSelectedRating(0);
+    setReviewComment('');
+    setReviewError('');
+  };
+
+  const handleSubmitReview = async () => {
+    setReviewError('');
+    setReviewSuccess('');
+
+    if (currentUser?.role !== 'CLIENT') {
+      setReviewError('Solo los clientes pueden dejar reseñas.');
+      return;
+    }
+
+    if (selectedRating < 1 || selectedRating > 5) {
+      setReviewError('Selecciona una calificación de 1 a 5 estrellas.');
+      return;
+    }
+
+    if (reviewComment.length > 500) {
+      setReviewError('El comentario no debe superar 500 caracteres.');
+      return;
+    }
+
+    if (!selectedReviewOrderId) {
+      setReviewError('Solo puedes reseñar productos comprados y entregados.');
+      return;
+    }
+
+    setReviewSubmitLoading(true);
+
+    try {
+      const createdReview = await createReview({
+        productId: product.id,
+        orderId: selectedReviewOrderId,
+        rating: selectedRating,
+        comment: reviewComment.trim() || undefined,
+      });
+      const previousTotal = reviewsSummary.totalReviews;
+      const previousAverage = reviewsSummary.averageRating ?? 0;
+      const nextTotal = previousTotal + 1;
+      const nextAverage = ((previousAverage * previousTotal) + createdReview.rating) / nextTotal;
+
+      setProductReviews((currentReviews) => [createdReview, ...currentReviews].slice(0, reviewPageSize));
+      setReviewsSummary({ averageRating: nextAverage, totalReviews: nextTotal });
+      setTotalReviewPages(Math.max(1, Math.ceil(nextTotal / reviewPageSize)));
+      setReviewEligibility((currentEligibility) => {
+        if (!currentEligibility) return currentEligibility;
+        const eligibleOrders = currentEligibility.eligibleOrders.filter((order) => order.orderId !== selectedReviewOrderId);
+        return {
+          canReview: eligibleOrders.length > 0,
+          reason: eligibleOrders.length > 0
+            ? undefined
+            : 'Ya registraste una reseña para este producto en tus pedidos entregados.',
+          eligibleOrders,
+        };
+      });
+      setReviewSuccess('Reseña publicada correctamente.');
+      resetReviewForm();
+    } catch (error) {
+      setReviewError(error instanceof Error ? error.message : 'No se pudo publicar la reseña.');
+    } finally {
+      setReviewSubmitLoading(false);
+    }
+  };
 
   return (
     <main className={`${styles.page} ${isEco ? styles.ecoPage : ''}`}>
@@ -163,33 +327,120 @@ export default function ProductDetailView({
 
             {activeTab === 'reviews' && (
               <div className={styles.reviewsPanel}>
-                <div className={styles.reviewSummary}>
-                  <strong>{averageRating?.toFixed(1) ?? 'Sin calificacion'}</strong>
+                <div className={styles.reviewsSummary}>
+                  <div>
+                    <span>Calificacion promedio</span>
+                    <strong>{averageRating ? averageRating.toFixed(1) : 'Sin calificacion'}</strong>
+                  </div>
+                  <p className={styles.rating}>
+                    {averageRating ? renderStars(averageRating) : '☆☆☆☆☆'}
+                    {averageRating && <span> {averageRating.toFixed(1)}</span>}
+                  </p>
                   <span>
-                    {productReviews.length === 1
+                    {reviewCount === 1
                       ? '1 reseña registrada'
-                      : `${productReviews.length} reseñas registradas`}
+                      : `${reviewCount} reseñas registradas`}
                   </span>
                 </div>
 
+                <div className={styles.reviewGate}>
+                  {!currentUser && (
+                    <p>Inicia sesion como cliente para reseñar productos que hayas comprado.</p>
+                  )}
+                  {currentUser && currentUser.role !== 'CLIENT' && (
+                    <p>Solo los clientes pueden dejar reseñas.</p>
+                  )}
+                  {currentUser?.role === 'CLIENT' && eligibilityLoading && (
+                    <p>Validando si puedes reseñar este producto...</p>
+                  )}
+                  {currentUser?.role === 'CLIENT' && !eligibilityLoading && reviewEligibility?.canReview && !showReviewForm && (
+                    <button className={styles.reviewButton} type="button" onClick={() => setShowReviewForm(true)}>
+                      Dejar reseña
+                    </button>
+                  )}
+                  {currentUser?.role === 'CLIENT' && !eligibilityLoading && reviewEligibility && !reviewEligibility.canReview && (
+                    <p>{reviewEligibility.reason ?? 'Podrás reseñar este producto cuando completes una compra entregada.'}</p>
+                  )}
+                  {reviewSuccess && <p className={styles.reviewMessage}>{reviewSuccess}</p>}
+                </div>
+
+                {showReviewForm && (
+                  <form className={styles.reviewForm} onSubmit={(event) => {
+                    event.preventDefault();
+                    void handleSubmitReview();
+                  }}>
+                    <h3>Dejar reseña</h3>
+                    <label>
+                      Calificacion
+                      <span className={styles.ratingSelector} aria-label="Selecciona una calificacion">
+                        {[1, 2, 3, 4, 5].map((ratingValue) => (
+                          <button
+                            aria-label={`${ratingValue} estrellas`}
+                            className={`${styles.starButton} ${selectedRating >= ratingValue ? styles.starActive : ''}`}
+                            key={ratingValue}
+                            type="button"
+                            onClick={() => setSelectedRating(ratingValue)}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </span>
+                    </label>
+
+                    {reviewEligibility && reviewEligibility.eligibleOrders.length > 1 && (
+                      <label>
+                        Selecciona el pedido
+                        <select value={selectedReviewOrderId} onChange={(event) => setSelectedReviewOrderId(event.target.value)}>
+                          {reviewEligibility.eligibleOrders.map((order) => (
+                            <option key={order.orderId} value={order.orderId}>
+                              Pedido {order.orderNumber ? `#${order.orderNumber}` : order.orderId.slice(0, 8)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+
+                    <label>
+                      Comentario
+                      <textarea
+                        className={styles.reviewTextarea}
+                        maxLength={500}
+                        placeholder="Cuentanos como fue tu experiencia con este producto..."
+                        value={reviewComment}
+                        onChange={(event) => setReviewComment(event.target.value)}
+                      />
+                    </label>
+                    <small>{reviewComment.length}/500 caracteres</small>
+                    {reviewError && <p className={styles.reviewError}>{reviewError}</p>}
+                    <div className={styles.reviewActions}>
+                      <button type="button" onClick={resetReviewForm}>Cancelar</button>
+                      <button type="submit" disabled={reviewSubmitLoading}>
+                        {reviewSubmitLoading ? 'Publicando...' : 'Publicar reseña'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {reviewsLoading && <p>Cargando reseñas...</p>}
                 {visibleReviews.length > 0 ? (
                   <div className={styles.reviewList}>
                     {visibleReviews.map((review) => (
-                      <article className={styles.reviewItem} key={review.id}>
+                      <article className={styles.reviewCard} key={review.id}>
                         <div>
                           <strong>{review.userName}</strong>
                           <span>{review.date}</span>
                         </div>
-                        <p className={styles.rating}>★★★★★ <span>{review.rating}</span></p>
+                        <p className={styles.rating}>{renderStars(review.rating)} <span>{review.rating}</span></p>
+                        {review.verified && <span className={styles.verifiedBadge}>Compra verificada</span>}
                         <p>{review.comment}</p>
                       </article>
                     ))}
                   </div>
                 ) : (
-                  <p>Este producto aun no tiene reseñas.</p>
+                  !reviewsLoading && <p>Este producto aun no tiene reseñas.</p>
                 )}
 
-                {productReviews.length > reviewPageSize && (
+                {reviewCount > reviewPageSize && (
                   <div className={styles.reviewActions}>
                     <button type="button" disabled={reviewPage === 0} onClick={() => setReviewPage((page) => Math.max(0, page - 1))}>
                       Anterior

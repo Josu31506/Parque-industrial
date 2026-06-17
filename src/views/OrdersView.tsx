@@ -5,6 +5,7 @@ type OrdersViewProps = {
   orders: Order[];
   onNavigate: (view: ViewName) => void;
   onPageChange?: (page: number) => void;
+  onRefresh?: () => void;
   onTrackOrder: (orderId: string) => void;
   pageInfo?: { page: number; total: number; totalPages: number };
 };
@@ -15,6 +16,7 @@ export default function OrdersView({
   orders,
   onNavigate,
   onPageChange,
+  onRefresh,
   onTrackOrder,
   pageInfo,
 }: OrdersViewProps) {
@@ -22,8 +24,15 @@ export default function OrdersView({
     <main className={styles.page}>
       <section className={`${styles.content} container`}>
         <div className={styles.heading}>
-          <h1>Mis pedidos</h1>
-          <p>Consulta el estado de tus pedidos y revisa su seguimiento.</p>
+          <div>
+            <h1>Mis pedidos</h1>
+            <p>Consulta el estado de tus pedidos y revisa su seguimiento.</p>
+          </div>
+          {onRefresh && (
+            <button className={styles.refreshButton} type="button" onClick={onRefresh}>
+              Actualizar
+            </button>
+          )}
         </div>
 
         {orders.length === 0 ? (

@@ -10,6 +10,7 @@ type OrderTrackingViewProps = {
   onConfirmReceived: (orderId: string) => void;
   onCreateClaim: (orderId: string, reason: string, description: string) => void;
   onNavigate: (view: ViewName) => void;
+  onRefresh?: () => void;
 };
 
 const steps: OrderStatus[] = [
@@ -43,6 +44,7 @@ export default function OrderTrackingView({
   onConfirmReceived,
   onCreateClaim,
   onNavigate,
+  onRefresh,
 }: OrderTrackingViewProps) {
   const [showClaimForm, setShowClaimForm] = useState(false);
   const completedStepIndex = getCompletedSteps(order?.status);
@@ -202,6 +204,11 @@ export default function OrderTrackingView({
           >
             Volver a pedidos
           </button>
+          {onRefresh && (
+            <button className={styles.refreshButton} type="button" onClick={onRefresh}>
+              Actualizar
+            </button>
+          )}
           {order && (
             <>
               {canConfirmReceived && (

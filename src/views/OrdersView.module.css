@@ -11,6 +11,10 @@
 }
 
 .heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
   margin-bottom: 34px;
 }
 
@@ -37,6 +41,16 @@
   color: #667085;
   font-size: 1.05rem;
   line-height: 1.55;
+}
+
+.refreshButton {
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid rgba(15, 47, 95, 0.16);
+  border-radius: 10px;
+  color: #0d2f5f;
+  background: #ffffff;
+  font-weight: 900;
 }
 
 /* Estado vacío */
@@ -244,5 +258,14 @@
     flex-basis: 48px;
     border-radius: 16px;
     font-size: 1.25rem;
+  }
+
+  .heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .refreshButton {
+    width: 100%;
   }
 }

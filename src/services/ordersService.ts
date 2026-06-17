@@ -31,6 +31,7 @@ const numberValue = (value: number | string | null | undefined) => Number(value 
 const mapOrderStatus = (status: ApiOrderStatus): OrderStatus => {
   if (status === 'DELIVERED' || status === 'CLOSED') return 'Entregado';
   if (status === 'DISPATCHED') return 'En camino';
+  if (status === 'READY_FOR_DISPATCH' || status === 'IN_PREPARATION') return 'En preparaciÃ³n';
   if (status === 'ORDER_CONFIRMED' || status === 'PAYMENT_COMPLETED') return 'Pedido confirmado';
   return 'En preparación';
 };

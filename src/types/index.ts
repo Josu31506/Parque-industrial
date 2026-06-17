@@ -335,10 +335,46 @@ export type CatalogFilter = {
 export type Review = {
   id: string;
   productId: string;
+  orderId?: string;
   userName: string;
   rating: number;
   comment: string;
   date: string;
+  verified?: boolean;
+};
+
+export type ReviewEligibilityOrder = {
+  orderId: string;
+  orderNumber?: number;
+  deliveredAt?: string | null;
+  createdAt: string;
+};
+
+export type ReviewEligibility = {
+  canReview: boolean;
+  reason?: string;
+  eligibleOrders: ReviewEligibilityOrder[];
+};
+
+export type ReviewsSummary = {
+  averageRating: number | null;
+  totalReviews: number;
+};
+
+export type ApiReview = {
+  id: string;
+  productId: string;
+  orderId: string;
+  rating: number;
+  comment?: string | null;
+  createdAt: string;
+  customer?: {
+    name: string;
+  } | null;
+};
+
+export type ApiReviewsResponse = PaginatedResponse<ApiReview> & {
+  summary: ReviewsSummary;
 };
 
 export type QuoteResolution = {

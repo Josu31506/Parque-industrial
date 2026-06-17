@@ -15,14 +15,15 @@ import {
 } from '../utils/statusLabels';
 import styles from './SellerDashboardView.module.css';
 
-type SellerDashboardTab = 'summary' | 'products' | 'create' | 'requests' | 'sales' | 'quotes' | 'earnings' | 'profile';
+type PersistedSellerDashboardTab = 'summary' | 'products' | 'create' | 'requests' | 'sales' | 'quotes' | 'earnings' | 'profile';
+type SellerDashboardTab = PersistedSellerDashboardTab | 'quoteResponse';
 
 type SellerDashboardViewProps = {
   activeProducerId: string;
   categories: Category[];
   error?: string;
   initialEditProductId?: string | null;
-  initialTab?: SellerDashboardTab;
+  initialTab?: PersistedSellerDashboardTab;
   isLoading?: boolean;
   products: Product[];
   producers: Producer[];
@@ -39,7 +40,7 @@ type SellerDashboardViewProps = {
   onMarkSaleInPreparation: (saleId: string) => Promise<void>;
   onMarkSaleReady: (saleId: string) => Promise<void>;
   onRespondQuote: (quoteId: string, data: { quotedPrice: number; quotedDeliveryDays: number; sellerComment?: string; validUntil?: string }) => Promise<void>;
-  onTabChange?: (tab: SellerDashboardTab) => void;
+  onTabChange?: (tab: PersistedSellerDashboardTab) => void;
   onUpdateProducerProfile: (data: Record<string, string>) => Promise<void>;
   onViewProduct: (productId: string) => void;
   onRejectRequest: (requestId: string, producerId: string, observation: string) => void;
@@ -76,16 +77,22 @@ const timeEnd = (label: string) => {
   if (isDevelopment) console.timeEnd(label);
 };
 
-const validSellerTabs: SellerDashboardTab[] = ['summary', 'products', 'create', 'requests', 'sales', 'quotes', 'earnings', 'profile'];
+const validSellerTabs: PersistedSellerDashboardTab[] = ['summary', 'products', 'create', 'requests', 'sales', 'quotes', 'earnings', 'profile'];
 
-const isSellerDashboardTab = (value: string | null): value is SellerDashboardTab => (
-  Boolean(value && validSellerTabs.includes(value as SellerDashboardTab))
+const isSellerDashboardTab = (value: string | null): value is PersistedSellerDashboardTab => (
+  Boolean(value && validSellerTabs.includes(value as PersistedSellerDashboardTab))
 );
 
-const getPersistedSellerTab = (fallback: SellerDashboardTab) => {
+const getPersistedSellerTab = (fallback: PersistedSellerDashboardTab) => {
   const storedTab = localStorage.getItem(SELLER_TAB_STORAGE_KEY);
   return isSellerDashboardTab(storedTab) ? storedTab : fallback;
 };
+
+const canRespondQuote = (quote: Quote) => (
+  quote.status === 'PENDING_REVIEW'
+  || quote.status === 'IN_COORDINATION'
+  || quote.status === 'CONSULTING_PRODUCER'
+);
 
 const compressImage = async (file: File): Promise<File> => {
   if (file.size <= SKIP_COMPRESSION_SIZE) return file;
@@ -489,6 +496,8 @@ export default function SellerDashboardView({
   } | null>(null);
   const [loadingSaleId, setLoadingSaleId] = useState<string | null>(null);
   const [respondingQuoteId, setRespondingQuoteId] = useState<string | null>(null);
+  const [quoteResponseError, setQuoteResponseError] = useState('');
+  const [quoteResponseLoading, setQuoteResponseLoading] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
@@ -497,6 +506,7 @@ export default function SellerDashboardView({
   }, [initialTab]);
 
   useEffect(() => {
+    if (tab === 'quoteResponse') return;
     localStorage.setItem(SELLER_TAB_STORAGE_KEY, tab);
     onTabChange?.(tab);
   }, [onTabChange, tab]);
@@ -521,6 +531,7 @@ export default function SellerDashboardView({
   );
   const sellerSales = sales;
   const editingProduct = sellerProducts.find((product) => product.id === editingProductId);
+  const respondingQuote = quotes.find((quote) => quote.id === respondingQuoteId);
 
   useEffect(() => {
     if (!editingProductId) return;
@@ -596,24 +607,83 @@ export default function SellerDashboardView({
     }
   };
 
+  const openQuoteResponse = (quoteId: string) => {
+    setRespondingQuoteId(quoteId);
+    setQuoteResponseError('');
+    setMessage('');
+    setActiveTab('quoteResponse');
+  };
+
+  const closeQuoteResponse = () => {
+    setRespondingQuoteId(null);
+    setQuoteResponseError('');
+    setActiveTab('quotes');
+  };
+
   const handleRespondQuote = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!respondingQuoteId) return;
     const formData = new FormData(event.currentTarget);
-    const quotedPrice = Number(getInputValue(formData, 'quotedPrice'));
+    const quotedPriceText = getInputValue(formData, 'quotedPrice');
+    const quotedPrice = Number(quotedPriceText);
     const quotedDeliveryDays = Number(getInputValue(formData, 'quotedDeliveryDays'));
+    const validUntil = getInputValue(formData, 'validUntil');
+    const sellerComment = getInputValue(formData, 'sellerComment');
+    const proposalScope = getInputValue(formData, 'proposalScope');
+    const materialNotes = getInputValue(formData, 'materialNotes');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    setQuoteResponseError('');
+
+    if (!Number.isFinite(quotedPrice) || quotedPrice <= 0 || quotedPrice > MAX_PRODUCT_PRICE) {
+      setQuoteResponseError('El precio debe estar entre S/ 0.01 y S/ 999,999.99.');
+      return;
+    }
+
+    if (!/^\d+(\.\d{1,2})?$/.test(quotedPriceText)) {
+      setQuoteResponseError('El precio solo puede tener hasta 2 decimales.');
+      return;
+    }
+
+    if (!Number.isInteger(quotedDeliveryDays) || quotedDeliveryDays < 1) {
+      setQuoteResponseError('El plazo de entrega debe ser de al menos 1 dia.');
+      return;
+    }
+
+    if (sellerComment.length > 600 || proposalScope.length > 600 || materialNotes.length > 600) {
+      setQuoteResponseError('Los comentarios deben tener como maximo 600 caracteres.');
+      return;
+    }
+
+    if (validUntil) {
+      const validUntilDate = new Date(`${validUntil}T00:00:00`);
+      if (validUntilDate < today) {
+        setQuoteResponseError('La validez de la propuesta no puede ser una fecha pasada.');
+        return;
+      }
+    }
 
     try {
+      setQuoteResponseLoading(true);
       await onRespondQuote(respondingQuoteId, {
         quotedPrice,
         quotedDeliveryDays,
-        sellerComment: getInputValue(formData, 'sellerComment') || undefined,
-        validUntil: getInputValue(formData, 'validUntil') || undefined,
+        sellerComment: [
+          sellerComment,
+          proposalScope ? `Incluye: ${proposalScope}` : '',
+          materialNotes ? `Materiales/acabados: ${materialNotes}` : '',
+        ].filter(Boolean).join('\n\n') || undefined,
+        validUntil: validUntil || undefined,
       });
       setRespondingQuoteId(null);
+      setQuoteResponseError('');
       setMessage('Cotizacion respondida correctamente.');
+      setActiveTab('quotes');
     } catch (quoteError) {
-      setMessage(quoteError instanceof Error ? quoteError.message : 'No se pudo responder la cotizacion.');
+      setQuoteResponseError(quoteError instanceof Error ? quoteError.message : 'No se pudo responder la cotizacion.');
+    } finally {
+      setQuoteResponseLoading(false);
     }
   };
 
@@ -932,15 +1002,109 @@ export default function SellerDashboardView({
                   {quote.quotedPrice && <p><span>Precio respondido</span><strong>{formatMoney(quote.quotedPrice)}</strong></p>}
                   {quote.quotedDeliveryDays && <p><span>Plazo</span><strong>{quote.quotedDeliveryDays} dias</strong></p>}
                 </div>
-                {(quote.status === 'PENDING_REVIEW' || quote.status === 'IN_COORDINATION' || quote.status === 'CONSULTING_PRODUCER') && (
+                {canRespondQuote(quote) && (
                   <div className={styles.actions}>
-                    <button className="primaryButton" type="button" onClick={() => setRespondingQuoteId(quote.id)}>
+                    <button className="primaryButton" type="button" onClick={() => openQuoteResponse(quote.id)}>
                       Gestionar cotizacion
                     </button>
                   </div>
                 )}
               </article>
             ))}
+          </div>
+        )}
+
+        {tab === 'quoteResponse' && (
+          <div className={styles.quoteResponsePage}>
+            <div className={styles.quoteResponseHeader}>
+              <button className={styles.secondaryButton} type="button" onClick={closeQuoteResponse}>
+                Volver a cotizaciones
+              </button>
+              <div>
+                <h2>Responder cotizacion</h2>
+                <p>Revisa la solicitud del cliente y envia una propuesta clara.</p>
+              </div>
+            </div>
+
+            {!respondingQuote ? (
+              <div className={styles.empty}>
+                No encontramos la cotizacion seleccionada.
+              </div>
+            ) : (
+              <div className={styles.quoteResponseLayout}>
+                <article className={styles.quoteSummaryCard}>
+                  <span className={styles.kicker}>Solicitud del cliente</span>
+                  <h3>{respondingQuote.title}</h3>
+                  <p>{respondingQuote.description}</p>
+
+                  <div className={styles.quoteInfoGrid}>
+                    <p><span>Cliente</span><strong>{respondingQuote.customer?.name ?? 'Cliente registrado'}</strong></p>
+                    <p><span>Producto base</span><strong>{respondingQuote.product?.title ?? 'Producto base'}</strong></p>
+                    <p><span>Cantidad</span><strong>{respondingQuote.quantity}</strong></p>
+                    <p><span>Creada</span><strong>{respondingQuote.createdAt}</strong></p>
+                    <p><span>Medidas</span><strong>{respondingQuote.requestedDimensions ?? 'No especificado'}</strong></p>
+                    <p><span>Material</span><strong>{respondingQuote.requestedMaterial ?? 'No especificado'}</strong></p>
+                    <p><span>Color</span><strong>{respondingQuote.requestedColor ?? 'No especificado'}</strong></p>
+                    <p><span>Acabado</span><strong>{respondingQuote.requestedFinish ?? 'No especificado'}</strong></p>
+                  </div>
+
+                  {respondingQuote.referenceImages?.length ? (
+                    <div className={styles.quoteReferenceImages}>
+                      {respondingQuote.referenceImages.map((image, index) => (
+                        <img src={image} alt={`Referencia ${index + 1}`} key={`${image}-${index}`} />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className={styles.helperText}>Esta solicitud no incluye imagenes de referencia.</p>
+                  )}
+                </article>
+
+                <form className={styles.quoteResponseForm} onSubmit={handleRespondQuote}>
+                  <div>
+                    <span className={styles.kicker}>Propuesta para el cliente</span>
+                    <h3>Condiciones de la cotizacion</h3>
+                  </div>
+
+                  <div className={styles.quoteFormGrid}>
+                    <label>
+                      <span>Precio cotizado</span>
+                      <input name="quotedPrice" type="number" min="0.01" max="999999.99" step="0.01" required defaultValue={respondingQuote.quotedPrice ?? ''} />
+                    </label>
+                    <label>
+                      <span>Plazo de entrega en dias</span>
+                      <input name="quotedDeliveryDays" type="number" min="1" required defaultValue={respondingQuote.quotedDeliveryDays ?? ''} />
+                    </label>
+                    <label>
+                      <span>Validez de la propuesta</span>
+                      <input name="validUntil" type="date" />
+                    </label>
+                    <label className={styles.full}>
+                      <span>Comentario / condiciones</span>
+                      <textarea name="sellerComment" placeholder="Indica condiciones comerciales, coordinaciones o restricciones importantes." defaultValue={respondingQuote.sellerComment ?? ''} />
+                    </label>
+                    <label className={styles.full}>
+                      <span>Que incluye la propuesta</span>
+                      <textarea name="proposalScope" placeholder="Ejemplo: fabricacion, acabado, embalaje, accesorios o instalacion si aplica." />
+                    </label>
+                    <label className={styles.full}>
+                      <span>Observaciones sobre materiales o acabados</span>
+                      <textarea name="materialNotes" placeholder="Detalla madera, tela, color, acabado, variaciones o alternativas disponibles." />
+                    </label>
+                  </div>
+
+                  {quoteResponseError && <p className={styles.error}>{quoteResponseError}</p>}
+
+                  <div className={styles.quoteActions}>
+                    <button className={styles.secondaryButton} type="button" disabled={quoteResponseLoading} onClick={closeQuoteResponse}>
+                      Cancelar
+                    </button>
+                    <button className="primaryButton" type="submit" disabled={quoteResponseLoading}>
+                      {quoteResponseLoading ? 'Enviando respuesta...' : 'Enviar respuesta'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         )}
 
@@ -1035,33 +1199,6 @@ export default function SellerDashboardView({
               </button>
             </div>
           </div>
-        </div>
-      )}
-      {respondingQuoteId && (
-        <div className={styles.modalOverlay} role="presentation">
-          <form className={styles.modal} onSubmit={handleRespondQuote} aria-modal="true">
-            <h2>Responder cotizacion</h2>
-            <label>
-              <span>Precio cotizado</span>
-              <input name="quotedPrice" type="number" min="0.01" max="999999.99" step="0.01" required />
-            </label>
-            <label>
-              <span>Plazo de entrega (dias)</span>
-              <input name="quotedDeliveryDays" type="number" min="1" required />
-            </label>
-            <label>
-              <span>Validez</span>
-              <input name="validUntil" type="date" />
-            </label>
-            <label>
-              <span>Comentario</span>
-              <textarea name="sellerComment" placeholder="Condiciones, materiales o acabados incluidos" />
-            </label>
-            <div className={styles.modalActions}>
-              <button type="button" onClick={() => setRespondingQuoteId(null)}>Cancelar</button>
-              <button type="submit">Enviar respuesta</button>
-            </div>
-          </form>
         </div>
       )}
     </main>

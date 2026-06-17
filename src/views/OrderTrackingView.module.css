@@ -180,6 +180,16 @@
   flex-wrap: wrap;
 }
 
+.refreshButton {
+  min-height: 40px;
+  padding: 10px 18px;
+  border: 1px solid rgba(15, 47, 95, 0.16);
+  border-radius: 8px;
+  color: #0d2f5f;
+  background: #ffffff;
+  font-weight: 900;
+}
+
 .producerGrid {
   display: grid;
   gap: 18px;
