@@ -77,6 +77,20 @@
   background: #f8faf6;
 }
 
+.evidenceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 10px;
+}
+
+.evidenceGrid img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 1px solid #dfe5dd;
+  border-radius: 12px;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

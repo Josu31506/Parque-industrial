@@ -30,6 +30,7 @@ const numberValue = (value: number | string | null | undefined) => Number(value 
 
 const mapOrderStatus = (status: ApiOrderStatus): OrderStatus => {
   if (status === 'DELIVERED' || status === 'CLOSED') return 'Entregado';
+  if (status === 'VERIFIED') return 'Verificado' as OrderStatus;
   if (status === 'DISPATCHED') return 'En camino';
   if (status === 'READY_FOR_DISPATCH' || status === 'IN_PREPARATION') return 'En preparaciÃ³n';
   if (status === 'ORDER_CONFIRMED' || status === 'PAYMENT_COMPLETED') return 'Pedido confirmado';
@@ -86,7 +87,10 @@ export const mapApiOrderToOrder = (order: ApiOrder | ApiTrackingResponse): Order
     total: numberValue(order.total),
     status: mapOrderStatus(order.status),
     estimatedDeliveryDate: formatDate(order.estimatedDeliveryDate),
+    dispatchedAt: order.dispatchedAt ?? undefined,
     deliveredAt: order.deliveredAt ?? undefined,
+    verifiedAt: order.verifiedAt ?? undefined,
+    autoVerifiedAt: order.autoVerifiedAt ?? undefined,
     claimDeadlineAt: order.claimDeadlineAt ?? undefined,
     completedAt: order.completedAt ?? undefined,
     fundsReleasedAt: order.fundsReleasedAt ?? undefined,
@@ -144,6 +148,11 @@ export async function checkoutCart(paymentOption: PaymentOption = 'FULL_PAYMENT'
 
 export async function markOrderDelivered(id: string) {
   const response = await patchRequest<ApiOrder>(`/orders/${id}/mark-delivered`);
+  return mapApiOrderToOrder(response);
+}
+
+export async function verifyOrder(id: string) {
+  const response = await patchRequest<ApiOrder>(`/orders/${id}/verify`);
   return mapApiOrderToOrder(response);
 }
 

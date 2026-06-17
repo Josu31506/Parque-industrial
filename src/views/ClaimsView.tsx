@@ -38,6 +38,15 @@ export default function ClaimsView({
                   </div>
                   <span className={styles.status}>{claim.status}</span>
                   <p className={styles.description}>{claim.description}</p>
+                  {claim.evidenceImages && claim.evidenceImages.length > 0 && (
+                    <div className={styles.evidenceGrid}>
+                      {claim.evidenceImages.map((image) => (
+                        <a href={image} key={image} rel="noreferrer" target="_blank">
+                          <img alt="Evidencia del reclamo" src={image} />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                   {order && <p className={styles.notice}>Fondos del pedido: {order.fundsStatus ?? 'HELD'}</p>}
 
                   {role === 'admin' && claim.status !== 'RESOLVED' && claim.status !== 'REJECTED' && (

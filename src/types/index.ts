@@ -17,6 +17,7 @@ export type ApiOrderStatus =
   | 'READY_FOR_DISPATCH'
   | 'DISPATCHED'
   | 'DELIVERED'
+  | 'VERIFIED'
   | 'IN_REVIEW'
   | 'CLOSED'
   | 'IN_CLAIM';
@@ -245,6 +246,13 @@ export type Order = {
   total: number;
   status: OrderStatus;
   estimatedDeliveryDate?: string;
+  dispatchedAt?: string;
+  deliveredAt?: string;
+  verifiedAt?: string;
+  autoVerifiedAt?: string;
+  claimDeadlineAt?: string;
+  completedAt?: string;
+  fundsReleasedAt?: string;
   paymentOption?: PaymentOption;
   paidAmount?: number;
   remainingAmount?: number;
@@ -320,6 +328,7 @@ export type Claim = {
   customerId: string;
   reason: string;
   description: string;
+  evidenceImages?: string[];
   status: ClaimStatus;
   createdAt: string;
 };
@@ -582,7 +591,10 @@ export type ApiOrder = {
   paymentStatus?: PaymentStatus | null;
   fundsStatus?: FundsStatus | null;
   estimatedDeliveryDate?: string | null;
+  dispatchedAt?: string | null;
   deliveredAt?: string | null;
+  verifiedAt?: string | null;
+  autoVerifiedAt?: string | null;
   claimDeadlineAt?: string | null;
   completedAt?: string | null;
   fundsReleasedAt?: string | null;
@@ -631,6 +643,7 @@ export type ApiClaim = {
   customerId: string;
   reason: string;
   description: string;
+  evidenceImages?: string[] | null;
   status: ClaimStatus;
   createdAt: string;
 };

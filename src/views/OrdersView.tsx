@@ -68,6 +68,15 @@ export default function OrdersView({
                     {order.estimatedDeliveryDate && (
                       <p>Entrega estimada: {order.estimatedDeliveryDate}</p>
                     )}
+                    {order.apiStatus === 'DELIVERED' && order.claimDeadlineAt && (
+                      <p>Puedes reportar problemas hasta: {new Date(order.claimDeadlineAt).toLocaleDateString('es-PE')}</p>
+                    )}
+                    {(order.apiStatus === 'VERIFIED' || order.apiStatus === 'CLOSED') && (
+                      <p>Pago liberado al productor</p>
+                    )}
+                    {order.apiStatus === 'IN_CLAIM' && (
+                      <p>Pedido en reclamo</p>
+                    )}
                     <p>Fondos: {order.fundsStatus ?? 'HELD'}</p>
                   </div>
                 </div>

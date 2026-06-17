@@ -9,3 +9,9 @@ export function uploadProductImage(file: File): Promise<UploadProductImageRespon
   formData.append('file', file);
   return postFormRequest<UploadProductImageResponse>('/uploads/products', formData);
 }
+
+export function uploadClaimImage(file: File): Promise<UploadProductImageResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return postFormRequest<UploadProductImageResponse>('/uploads/claim-image', formData);
+}

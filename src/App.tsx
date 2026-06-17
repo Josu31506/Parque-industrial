@@ -30,7 +30,7 @@ import {
   rejectClaim,
   resolveClaim,
 } from './services/claimsService';
-import { checkoutCart, getMyOrders, getOrderTracking, markOrderDelivered } from './services/ordersService';
+import { checkoutCart, getMyOrders, getOrderTracking, markOrderDelivered, verifyOrder } from './services/ordersService';
 import { getMyProducer, getProducers as fetchProducers, updateMyProducer } from './services/producersService';
 import {
   createProduct as createRemoteProduct,
@@ -107,7 +107,7 @@ import VerdecitoView from './views/VerdecitoView';
 
 const SHIPPING_COST = 10;
 const DELIVERY_DAYS = 2;
-const PLATFORM_COMMISSION = 0.1;
+const PLATFORM_COMMISSION = 0.05;
 const PENDING_QUOTE_ACTION_KEY = 'pendingQuoteAction';
 const CATALOG_CACHE_KEY = 'catalogCache';
 const CART_CACHE_KEY = 'cartCache';
@@ -267,6 +267,12 @@ const mapClaimReasonToApi = (reason: string) => {
     'Medidas incorrectas': 'WRONG_DIMENSIONS',
     'Color/acabado incorrecto': 'WRONG_COLOR',
     'No llego el producto': 'NOT_DELIVERED',
+    'Producto danado evidencia': 'PRODUCTO_DANADO',
+    'Producto incorrecto': 'PRODUCTO_INCORRECTO',
+    'Faltan productos': 'FALTAN_PRODUCTOS',
+    'Mala calidad': 'MALA_CALIDAD',
+    'Entrega incompleta': 'ENTREGA_INCOMPLETA',
+    Otro: 'OTRO',
   };
 
   return reasons[reason] ?? 'OTHER';
@@ -1928,12 +1934,14 @@ export default function App() {
     });
   };
 
-  const handleCreateClaim = async (orderId: string, reason: string, description: string) => {
+  const handleCreateClaim = async (orderId: string, reason: string, description: string, evidenceImages: string[] = []) => {
     try {
-      const claim = await createRemoteClaim(orderId, mapClaimReasonToApi(reason), description);
+      const claim = await createRemoteClaim(orderId, mapClaimReasonToApi(reason), description, evidenceImages);
       updateClaimsState((current) => [claim, ...current.filter((entry) => entry.id !== claim.id)]);
       updateOrdersState((current) => current.map((order) => (
-        order.id === orderId ? { ...order, fundsStatus: 'HELD_BY_CLAIM' } : order
+        order.id === orderId
+          ? { ...order, apiStatus: 'IN_CLAIM', status: 'En reclamo' as Order['status'], fundsStatus: 'HELD_BY_CLAIM' }
+          : order
       )));
       setSales((current) => current.map((sale) => (
         sale.orderId === orderId ? { ...sale, fundsStatus: 'HELD_BY_CLAIM', status: 'HELD_BY_CLAIM' } : sale
@@ -1950,13 +1958,16 @@ export default function App() {
       customerId: currentUser?.id ?? currentUser?.email ?? 'cliente-demo',
       reason,
       description,
+      evidenceImages,
       status: 'OPEN',
       createdAt: formatDate(new Date()),
     };
 
     updateClaimsState((current) => [claim, ...current]);
     updateOrdersState((current) => current.map((order) => (
-      order.id === orderId ? { ...order, fundsStatus: 'HELD_BY_CLAIM' } : order
+      order.id === orderId
+        ? { ...order, apiStatus: 'IN_CLAIM', status: 'En reclamo' as Order['status'], fundsStatus: 'HELD_BY_CLAIM' }
+        : order
     )));
     setSales((current) => current.map((sale) => (
       sale.orderId === orderId ? { ...sale, fundsStatus: 'HELD_BY_CLAIM', status: 'HELD_BY_CLAIM' } : sale
@@ -2062,6 +2073,33 @@ export default function App() {
       writeCache(TRACKING_CACHE_KEY, trackingCacheRef.current);
     } catch (error) {
       setCartNotice(error instanceof Error ? error.message : 'No se pudo confirmar la recepcion.');
+    }
+  };
+
+  const handleVerifyOrder = async (orderId: string) => {
+    const orderToVerify = orders.find((entry) => entry.id === orderId)
+      ?? trackingCacheRef.current[orderId]?.data;
+
+    if (orderToVerify?.apiStatus !== 'DELIVERED') {
+      setCartNotice('Solo puedes verificar un pedido entregado.');
+      return;
+    }
+
+    try {
+      const order = await verifyOrder(orderId);
+      updateOrdersState((current) => current.map((entry) => (
+        entry.id === orderId ? { ...entry, ...order } : entry
+      )));
+      setSales((current) => current.map((sale) => (
+        sale.orderId === orderId ? { ...sale, fundsStatus: 'RELEASED' } : sale
+      )));
+      trackingCacheRef.current = {
+        ...trackingCacheRef.current,
+        [orderId]: { data: order, updatedAt: Date.now() },
+      };
+      writeCache(TRACKING_CACHE_KEY, trackingCacheRef.current);
+    } catch (error) {
+      setCartNotice(error instanceof Error ? error.message : 'No se pudo verificar la entrega.');
     }
   };
 
@@ -2236,6 +2274,7 @@ export default function App() {
           onCreateClaim={handleCreateClaim}
           onNavigate={navigate}
           onRefresh={handleRefreshSelectedTracking}
+          onVerifyOrder={handleVerifyOrder}
         />
       );
     }

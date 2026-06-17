@@ -14,10 +14,11 @@ const mapApiClaimToClaim = (claim: ApiClaim): Claim => ({
   description: claim.description,
   status: claim.status,
   createdAt: formatDate(claim.createdAt),
+  evidenceImages: claim.evidenceImages ?? undefined,
 });
 
-export async function createClaim(orderId: string, reason: string, description: string) {
-  const response = await postRequest<ApiClaim>('/claims', { orderId, reason, description });
+export async function createClaim(orderId: string, reason: string, description: string, evidenceImages: string[] = []) {
+  const response = await postRequest<ApiClaim>('/claims', { orderId, reason, description, evidenceImages });
   return mapApiClaimToClaim(response);
 }
 

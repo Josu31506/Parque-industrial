@@ -94,6 +94,15 @@
   font-weight: 900;
 }
 
+.verifiedNotice {
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: #2e7d32;
+  background: #eef7e8;
+  font-weight: 900;
+}
+
 .step {
   position: relative;
   display: grid;
@@ -265,6 +274,57 @@
 .claimForm textarea {
   min-height: 110px;
   resize: vertical;
+}
+
+.previewGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.previewItem {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid #dfe5dd;
+  border-radius: 12px;
+  background: #f8faf6;
+}
+
+.previewItem img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.previewItem span {
+  overflow: hidden;
+  color: #0d2f5f;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previewItem button {
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  color: #9b2c2c;
+  background: #fff1f1;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.claimError {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #9b2c2c;
+  background: #fff1f1;
+  font-weight: 900;
 }
 
 @media (max-width: 760px) {
