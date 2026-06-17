@@ -1,5 +1,6 @@
 import styles from './OrdersView.module.css';
 import type { Order, ViewName } from '../types';
+import { formatOrderNumber } from '../utils/displayNames';
 
 type OrdersViewProps = {
   orders: Order[];
@@ -56,13 +57,13 @@ export default function OrdersView({
           </div>
         ) : (
           <div className={styles.list}>
-            {orders.map((order, index) => (
+            {orders.map((order) => (
               <article className={styles.card} key={order.id}>
                 <div className={styles.orderInfo}>
                   <div className={styles.orderIcon}>📦</div>
 
                   <div>
-                    <h2>Pedido {index + 1}</h2>
+                    <h2>{formatOrderNumber(order.orderNumber, order.id)}</h2>
                     <p>Pedido realizado el {order.date}</p>
                     {order.estimatedDeliveryDate && (
                       <p>Entrega estimada: {order.estimatedDeliveryDate}</p>

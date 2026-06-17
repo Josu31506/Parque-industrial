@@ -1,5 +1,6 @@
 import styles from './OrderSuccessView.module.css';
 import type { Order, ViewName } from '../types';
+import { formatOrderNumber } from '../utils/displayNames';
 
 type OrderSuccessViewProps = {
   order: Order | undefined;
@@ -21,6 +22,10 @@ export default function OrderSuccessView({
 
         {order && (
           <div className={styles.facts}>
+            <p>
+              <span>Pedido</span>
+              <strong>{formatOrderNumber(order.orderNumber, order.id)}</strong>
+            </p>
             <p>
               <span>Fecha</span>
               <strong>{order.date}</strong>

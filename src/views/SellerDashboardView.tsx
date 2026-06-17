@@ -4,7 +4,7 @@ import imageCompression from 'browser-image-compression';
 import type { ProductFormInput } from '../services/productsService';
 import { uploadProductImage } from '../services/uploadsService';
 import type { Category, Producer, Product, PurchaseRequest, PurchaseRequestGroup, Quote, Sale, SellerEarnings } from '../types';
-import { getCategoryDisplayName, getSaleDisplayName } from '../utils/displayNames';
+import { formatOrderNumber, getCategoryDisplayName, getSaleDisplayName } from '../utils/displayNames';
 import {
   getActiveLabel,
   getConfirmationLabel,
@@ -1135,7 +1135,7 @@ export default function SellerDashboardView({
                   <article className={styles.card} key={item.saleId}>
                     <div className={styles.cardHeader}>
                       <div>
-                        <h2>Pedido N. {String(item.orderNumber ?? '').padStart(6, '0')}</h2>
+                        <h2>{formatOrderNumber(item.orderNumber, item.orderId)}</h2>
                         <p>Venta: {item.createdAt}</p>
                       </div>
                       <span className={styles.status}>{getFundsStatusLabel(item.fundsStatus)}</span>
