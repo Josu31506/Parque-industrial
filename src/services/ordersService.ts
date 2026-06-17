@@ -32,7 +32,7 @@ const mapOrderStatus = (status: ApiOrderStatus): OrderStatus => {
   if (status === 'DELIVERED' || status === 'CLOSED') return 'Entregado';
   if (status === 'VERIFIED') return 'Verificado' as OrderStatus;
   if (status === 'DISPATCHED') return 'En camino';
-  if (status === 'READY_FOR_DISPATCH' || status === 'IN_PREPARATION') return 'En preparaciÃ³n';
+  if (status === 'READY_FOR_DISPATCH' || status === 'IN_PREPARATION') return 'En preparación';
   if (status === 'ORDER_CONFIRMED' || status === 'PAYMENT_COMPLETED') return 'Pedido confirmado';
   return 'En preparación';
 };
