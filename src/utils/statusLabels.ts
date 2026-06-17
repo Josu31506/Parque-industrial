@@ -1,6 +1,8 @@
 export function getQuoteStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     ADDED_TO_CART: 'Agregada al carrito',
+    ANSWERED: 'Respondida',
+    ACCEPTED: 'Aceptada',
     CANCELLED: 'Cancelada',
     CONSULTING_PRODUCER: 'En coordinación',
     CONVERTED_TO_ORDER: 'Convertida en pedido',

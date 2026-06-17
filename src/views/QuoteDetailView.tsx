@@ -77,6 +77,7 @@ export default function QuoteDetailView({ onNavigate, quoteId }: QuoteDetailView
   }
 
   const resolution = quote.resolutions[quote.resolutions.length - 1];
+  const hasSellerAnswer = Boolean(quote.quotedPrice);
 
   return (
     <main className={styles.page}>
@@ -102,17 +103,17 @@ export default function QuoteDetailView({ onNavigate, quoteId }: QuoteDetailView
           </div>
         </article>
 
-        {resolution ? (
+        {resolution || hasSellerAnswer ? (
           <article className={styles.resolution}>
-            <h2>{resolution.finalTitle}</h2>
-            <p>{resolution.finalDescription}</p>
-            <strong className={styles.price}>{money(resolution.finalPrice)}</strong>
+            <h2>{resolution?.finalTitle ?? quote.product?.title ?? quote.title}</h2>
+            <p>{resolution?.finalDescription ?? quote.sellerComment ?? quote.description}</p>
+            <strong className={styles.price}>{money(resolution?.finalPrice ?? quote.quotedPrice ?? 0)}</strong>
             <div className={styles.facts}>
-              <div><span>Productora asignada</span><strong>{getProducerDisplayName(resolution.producer ?? undefined)}</strong></div>
-              <div><span>Tiempo estimado</span><strong>{resolution.deliveryTime}</strong></div>
-              <div><span>Validez</span><strong>{resolution.validUntil ?? 'No especificado'}</strong></div>
+              <div><span>Productora asignada</span><strong>{getProducerDisplayName(resolution?.producer ?? quote.product?.producer ?? undefined)}</strong></div>
+              <div><span>Tiempo estimado</span><strong>{resolution?.deliveryTime ?? (quote.quotedDeliveryDays ? `${quote.quotedDeliveryDays} dias` : 'No especificado')}</strong></div>
+              <div><span>Validez</span><strong>{resolution?.validUntil ?? quote.validUntil ?? 'No especificado'}</strong></div>
             </div>
-            {resolution.notes && <p>{resolution.notes}</p>}
+            {(resolution?.notes || quote.sellerComment) && <p>{resolution?.notes ?? quote.sellerComment}</p>}
             <div className={styles.actions}>
               <button className="primaryButton" type="button" disabled={isAdding} onClick={handleAddToCart}>
                 {isAdding ? 'Agregando...' : 'Agregar al carrito'}

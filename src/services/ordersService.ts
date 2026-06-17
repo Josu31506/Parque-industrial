@@ -39,9 +39,11 @@ const mapOrderItem = (item: ApiOrderItem): MarketplaceItem => {
   const unitPrice = numberValue(item.unitPrice);
 
   return {
-    productId: item.productId,
+    productId: item.productId ?? undefined,
+    quoteId: item.quoteId ?? undefined,
+    titleSnapshot: item.titleSnapshot ?? undefined,
     quantity: item.quantity,
-    title: item.product?.title ?? 'Producto no disponible',
+    title: item.product?.title ?? item.titleSnapshot ?? item.quote?.title ?? 'Producto cotizado',
     price: `S/. ${unitPrice.toLocaleString('es-PE')}`,
     numericPrice: unitPrice,
     producerId: item.producerId,
@@ -53,9 +55,11 @@ const mapSaleGroup = (sale: ApiSale): OrderProducerGroup => ({
   producerId: sale.producerId,
   producerName: sale.producerName ?? sale.producer?.businessName ?? 'Productor no asignado',
   items: (sale.items ?? []).map((item) => ({
-    productId: item.productId,
+    productId: item.productId ?? undefined,
+    quoteId: item.quoteId ?? undefined,
+    titleSnapshot: item.titleSnapshot ?? undefined,
     quantity: item.quantity,
-    title: item.product?.title ?? 'Producto no disponible',
+    title: item.product?.title ?? item.titleSnapshot ?? item.quote?.title ?? 'Producto cotizado',
     price: `S/. ${numberValue(item.unitPrice).toLocaleString('es-PE')}`,
     numericPrice: numberValue(item.unitPrice),
     producerId: sale.producerId,
@@ -81,6 +85,10 @@ export const mapApiOrderToOrder = (order: ApiOrder | ApiTrackingResponse): Order
     total: numberValue(order.total),
     status: mapOrderStatus(order.status),
     estimatedDeliveryDate: formatDate(order.estimatedDeliveryDate),
+    deliveredAt: order.deliveredAt ?? undefined,
+    claimDeadlineAt: order.claimDeadlineAt ?? undefined,
+    completedAt: order.completedAt ?? undefined,
+    fundsReleasedAt: order.fundsReleasedAt ?? undefined,
     paymentOption: order.paymentOption ?? undefined,
     paidAmount: order.paidAmount === null ? undefined : numberValue(order.paidAmount),
     remainingAmount: order.remainingAmount === null ? undefined : numberValue(order.remainingAmount),

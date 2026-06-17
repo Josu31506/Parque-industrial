@@ -31,7 +31,7 @@ import {
   resolveClaim,
 } from './services/claimsService';
 import { checkoutCart, getMyOrders, getOrderTracking, markOrderDelivered } from './services/ordersService';
-import { getProducers as fetchProducers } from './services/producersService';
+import { getMyProducer, getProducers as fetchProducers, updateMyProducer } from './services/producersService';
 import {
   createProduct as createRemoteProduct,
   deactivateProduct as deactivateRemoteProduct,
@@ -52,11 +52,12 @@ import {
 } from './services/purchaseRequestsService';
 import {
   getMySales,
+  getMyEarnings,
   markSaleDispatched,
   markSaleInPreparation,
   markSaleReadyForDispatch,
 } from './services/salesService';
-import { getMyQuotes, getSellerQuotes } from './services/quotesService';
+import { getMyQuotes, getSellerQuotes, respondQuote } from './services/quotesService';
 import type {
   CartItem,
   CatalogFilter,
@@ -75,6 +76,7 @@ import type {
   Role,
   Sale,
   SaleStatus,
+  SellerEarnings,
   User,
   ViewName,
   ApiRole,
@@ -132,22 +134,18 @@ type CacheEnvelope<T> = {
   updatedAt: number;
 };
 
-type CatalogCache = {
-  products: Product[];
-  categories: Category[];
-  producers: Producer[];
-};
-
 type SellerDashboardCache = {
   products: Product[];
   quotes: Quote[];
   requests: PurchaseRequest[];
   sales: Sale[];
+  earnings?: SellerEarnings | null;
+  producer?: Producer | null;
 };
 
-type SellerDashboardTab = 'summary' | 'products' | 'create' | 'requests' | 'sales' | 'quotes';
+type SellerDashboardTab = 'summary' | 'products' | 'create' | 'requests' | 'sales' | 'quotes' | 'earnings' | 'profile';
 
-type SellerResourceKey = 'products' | 'quotes' | 'requests' | 'sales';
+type SellerResourceKey = 'products' | 'quotes' | 'requests' | 'sales' | 'earnings' | 'profile';
 
 type TrackingCache = Record<string, CacheEnvelope<Order>>;
 
@@ -157,6 +155,18 @@ type PageInfo = {
   total: number;
 };
 
+type CatalogCache = {
+  products: Product[];
+  categories: Category[];
+  producers: Producer[];
+};
+
+type CatalogProductsCacheEntry = {
+  items: Product[];
+  pageInfo: PageInfo;
+  updatedAt: number;
+};
+
 const DEFAULT_PAGE_INFO: PageInfo = {
   page: 1,
   total: 0,
@@ -164,11 +174,17 @@ const DEFAULT_PAGE_INFO: PageInfo = {
 };
 
 const SELLER_TAB_STORAGE_KEY = 'sellerDashboardActiveTab';
-const validSellerTabs: SellerDashboardTab[] = ['summary', 'products', 'create', 'requests', 'sales', 'quotes'];
+const validSellerTabs: SellerDashboardTab[] = ['summary', 'products', 'create', 'requests', 'sales', 'quotes', 'earnings', 'profile'];
 const readSellerTab = (): SellerDashboardTab => {
   const storedTab = localStorage.getItem(SELLER_TAB_STORAGE_KEY);
   return validSellerTabs.includes(storedTab as SellerDashboardTab) ? storedTab as SellerDashboardTab : 'summary';
 };
+
+const getCatalogProductsCacheKey = (page: number, filter: CatalogFilter | null) => JSON.stringify({
+  page,
+  limit: 20,
+  filter: filter ?? {},
+});
 
 const readCache = <T,>(key: string): CacheEnvelope<T> | null => {
   const value = localStorage.getItem(key);
@@ -396,6 +412,7 @@ export default function App() {
   const [hasPendingCheckout, setHasPendingCheckout] = useState(false);
   const [pendingCartProductId, setPendingCartProductId] = useState<string | null>(null);
   const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
   const [cartMessage, setCartMessage] = useState('');
   const [cartNotice, setCartNotice] = useState('');
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -403,6 +420,7 @@ export default function App() {
   const [ordersPageInfo, setOrdersPageInfo] = useState<PageInfo>(DEFAULT_PAGE_INFO);
   const [ordersPage, setOrdersPage] = useState(1);
   const [sales, setSales] = useState<Sale[]>(() => initialSellerDashboardCache?.data.sales ?? []);
+  const [sellerEarnings, setSellerEarnings] = useState<SellerEarnings | null>(() => initialSellerDashboardCache?.data.earnings ?? null);
   const [sellerProducts, setSellerProducts] = useState<Product[]>(() => initialSellerDashboardCache?.data.products ?? []);
   const [sellerQuotes, setSellerQuotes] = useState<Quote[]>(() => initialSellerDashboardCache?.data.quotes ?? []);
   const [sellerActiveTab, setSellerActiveTab] = useState<SellerDashboardTab>(() => readSellerTab());
@@ -430,8 +448,22 @@ export default function App() {
   const isApplyingPopState = useRef(false);
   const catalogLoadedRef = useRef(Boolean(initialCatalogCache && isCacheFresh(initialCatalogCache.updatedAt, CATALOG_TTL)));
   const catalogRequestRef = useRef<Promise<void> | null>(null);
+  const catalogMetadataRequestRef = useRef<Promise<void> | null>(null);
+  const catalogProductsRequestRef = useRef<Record<string, Promise<void>>>({});
+  const catalogProductsCacheRef = useRef<Record<string, CatalogProductsCacheEntry>>(
+    initialCatalogCache
+      ? {
+        [getCatalogProductsCacheKey(1, null)]: {
+          items: initialCatalogCache.data.products,
+          pageInfo: { page: 1, total: initialCatalogCache.data.products.length, totalPages: 1 },
+          updatedAt: initialCatalogCache.updatedAt,
+        },
+      }
+      : {},
+  );
   const cartRequestRef = useRef<Promise<CartItem[]> | null>(null);
   const lastCatalogFetchRef = useRef(initialCatalogCache?.updatedAt ?? 0);
+  const lastCatalogMetadataFetchRef = useRef(initialCatalogCache?.updatedAt ?? 0);
   const lastCartFetchRef = useRef(initialCartCache?.updatedAt ?? 0);
   const ordersRequestRef = useRef<Promise<Order[]> | null>(null);
   const lastOrdersFetchRef = useRef(initialOrdersCache?.updatedAt ?? 0);
@@ -447,6 +479,8 @@ export default function App() {
     quotes: initialSellerDashboardCache?.data.quotes.length ? initialSellerDashboardCache.updatedAt : 0,
     requests: initialSellerDashboardCache?.data.requests.length ? initialSellerDashboardCache.updatedAt : 0,
     sales: initialSellerDashboardCache?.data.sales.length ? initialSellerDashboardCache.updatedAt : 0,
+    earnings: initialSellerDashboardCache?.data.earnings ? initialSellerDashboardCache.updatedAt : 0,
+    profile: initialSellerDashboardCache?.data.producer ? initialSellerDashboardCache.updatedAt : 0,
   });
   const trackingRequestRef = useRef<Record<string, Promise<Order>>>({});
   const trackingCacheRef = useRef<TrackingCache>(initialTrackingCache?.data ?? {});
@@ -465,6 +499,11 @@ export default function App() {
   const invalidateCatalogCache = () => {
     catalogLoadedRef.current = false;
     lastCatalogFetchRef.current = 0;
+    lastCatalogMetadataFetchRef.current = 0;
+    catalogProductsCacheRef.current = {};
+    catalogProductsRequestRef.current = {};
+    catalogMetadataRequestRef.current = null;
+    catalogRequestRef.current = null;
     removeCache(CATALOG_CACHE_KEY);
   };
 
@@ -489,6 +528,8 @@ export default function App() {
       quotes: 0,
       requests: 0,
       sales: 0,
+      earnings: 0,
+      profile: 0,
     };
     removeCache(SELLER_DASHBOARD_CACHE_KEY);
   };
@@ -540,12 +581,14 @@ export default function App() {
     quotes = sellerQuotes,
     requests = purchaseRequests,
     nextSales = sales,
+    earnings = sellerEarnings,
   ) => {
     writeCache(SELLER_DASHBOARD_CACHE_KEY, {
       products,
       quotes,
       requests,
       sales: nextSales,
+      earnings,
     });
   };
 
@@ -558,51 +601,105 @@ export default function App() {
     });
   };
 
-  const fetchCatalogOnce = async (options: { force?: boolean; page?: number } = {}) => {
+  const writeCatalogCache = (
+    products = catalogProducts,
+    categories = catalogCategories.length ? catalogCategories : fallbackCategories,
+    producers = catalogProducers.length ? catalogProducers : fallbackProducers,
+    updatedAt = Date.now(),
+  ) => {
+    writeCache(CATALOG_CACHE_KEY, { products, categories, producers }, updatedAt);
+  };
+
+  const fetchCatalogMetadataOnce = async (options: { force?: boolean } = {}) => {
+    const hasMetadata = catalogCategories.length > 0 && catalogProducers.length > 0;
+    if (!options.force && hasMetadata && isCacheFresh(lastCatalogMetadataFetchRef.current, CATALOG_TTL)) return;
+    if (!options.force && catalogMetadataRequestRef.current) return catalogMetadataRequestRef.current;
+
+    catalogMetadataRequestRef.current = Promise.all([
+      fetchCategories(),
+      fetchProducers(),
+    ])
+      .then(([loadedCategories, loadedProducers]) => {
+        const nextCategories = loadedCategories.length ? loadedCategories : fallbackCategories;
+        const nextProducers = loadedProducers.length ? loadedProducers : fallbackProducers;
+        setCatalogCategories(nextCategories);
+        setCatalogProducers(nextProducers);
+        lastCatalogMetadataFetchRef.current = Date.now();
+        writeCatalogCache(catalogProducts, nextCategories, nextProducers, lastCatalogMetadataFetchRef.current);
+      })
+      .catch(() => {
+        if (!catalogCategories.length) setCatalogCategories(fallbackCategories);
+        if (!catalogProducers.length) setCatalogProducers(fallbackProducers);
+      })
+      .finally(() => {
+        catalogMetadataRequestRef.current = null;
+      });
+
+    return catalogMetadataRequestRef.current;
+  };
+
+  const fetchCatalogProductsOnce = async (options: { force?: boolean; page?: number } = {}) => {
     const requestedPage = options.page ?? catalogPage;
-    if (catalogRequestRef.current) return catalogRequestRef.current;
-    if (!options.force && requestedPage === catalogPage && catalogProducts.length > 0 && isCacheFresh(lastCatalogFetchRef.current, CATALOG_TTL)) {
+    const cacheKey = getCatalogProductsCacheKey(requestedPage, catalogFilter);
+    const cached = catalogProductsCacheRef.current[cacheKey];
+
+    if (!options.force && cached && isCacheFresh(cached.updatedAt, CATALOG_TTL)) {
+      setCatalogProducts(cached.items);
+      setCatalogPage(requestedPage);
+      setCatalogPageInfo(cached.pageInfo);
+      catalogLoadedRef.current = true;
       return;
+    }
+
+    if (!options.force && catalogProductsRequestRef.current[cacheKey]) {
+      return catalogProductsRequestRef.current[cacheKey];
     }
 
     setIsLoadingCatalog(true);
     setCatalogError('');
 
-    catalogRequestRef.current = Promise.all([
-      fetchProducts({ ...(catalogFilter ?? {}), limit: 20, page: requestedPage }),
-      fetchCategories(),
-      fetchProducers(),
-    ])
-      .then(([loadedProducts, loadedCategories, loadedProducers]) => {
-        setCatalogProducts(loadedProducts.items);
-        setCatalogPage(requestedPage);
-        setCatalogPageInfo({
+    catalogProductsRequestRef.current[cacheKey] = fetchProducts({ ...(catalogFilter ?? {}), limit: 20, page: requestedPage })
+      .then((loadedProducts) => {
+        const pageInfo = {
           page: loadedProducts.page,
           total: loadedProducts.total,
           totalPages: loadedProducts.totalPages,
-        });
-        setCatalogCategories(loadedCategories.length ? loadedCategories : fallbackCategories);
-        setCatalogProducers(loadedProducers.length ? loadedProducers : fallbackProducers);
+        };
+        setCatalogProducts(loadedProducts.items);
+        setCatalogPage(requestedPage);
+        setCatalogPageInfo(pageInfo);
         setCatalogSynced(true);
         catalogLoadedRef.current = true;
         lastCatalogFetchRef.current = Date.now();
-        writeCache(CATALOG_CACHE_KEY, {
-          products: loadedProducts.items,
-          categories: loadedCategories.length ? loadedCategories : fallbackCategories,
-          producers: loadedProducers.length ? loadedProducers : fallbackProducers,
-        }, lastCatalogFetchRef.current);
+        catalogProductsCacheRef.current[cacheKey] = {
+          items: loadedProducts.items,
+          pageInfo,
+          updatedAt: lastCatalogFetchRef.current,
+        };
+        writeCatalogCache(loadedProducts.items, catalogCategories, catalogProducers, lastCatalogFetchRef.current);
       })
       .catch(() => {
         if (!catalogProducts.length) setCatalogProducts([]);
-        if (!catalogCategories.length) setCatalogCategories(fallbackCategories);
-        if (!catalogProducers.length) setCatalogProducers(fallbackProducers);
         setCatalogSynced(false);
         catalogLoadedRef.current = false;
         setCatalogError('No pudimos cargar el catalogo. Verifica que el backend este activo.');
       })
       .finally(() => {
-        catalogRequestRef.current = null;
+        delete catalogProductsRequestRef.current[cacheKey];
         setIsLoadingCatalog(false);
+      });
+
+    return catalogProductsRequestRef.current[cacheKey];
+  };
+
+  const fetchCatalogOnce = async (options: { force?: boolean; page?: number } = {}) => {
+    catalogRequestRef.current = Promise.all([
+      fetchCatalogProductsOnce(options),
+      fetchCatalogMetadataOnce({ force: options.force }),
+    ])
+      .then(() => undefined)
+      .finally(() => {
+        catalogRequestRef.current = null;
       });
 
     return catalogRequestRef.current;
@@ -783,12 +880,27 @@ export default function App() {
     updateSellerDashboardCache(sellerProducts, sellerQuotes, purchaseRequests, remoteSales.items);
   }, options);
 
+  const fetchSellerEarningsOnce = (options: { force?: boolean } = {}) => fetchSellerResourceOnce('earnings', async () => {
+    const month = new Date().toISOString().slice(0, 7);
+    const remoteEarnings = await getMyEarnings(month);
+    setSellerEarnings(remoteEarnings);
+    updateSellerDashboardCache(sellerProducts, sellerQuotes, purchaseRequests, sales, remoteEarnings);
+  }, options);
+
+  const fetchSellerProfileOnce = (options: { force?: boolean } = {}) => fetchSellerResourceOnce('profile', async () => {
+    const producer = await getMyProducer();
+    setActiveProducerId(producer.id);
+    setCatalogProducers((current) => [producer, ...current.filter((entry) => entry.id !== producer.id)]);
+  }, options);
+
   const fetchSellerDashboardOnce = async (options: { force?: boolean; tab?: SellerDashboardTab } = {}) => {
     const tab = options.tab ?? sellerActiveTab;
     if (tab === 'products' || tab === 'create') return fetchSellerProductsOnce(options);
     if (tab === 'quotes') return fetchSellerQuotesOnce(options);
     if (tab === 'requests') return fetchSellerRequestsOnce(options);
     if (tab === 'sales') return fetchSellerSalesOnce(options);
+    if (tab === 'earnings') return fetchSellerEarningsOnce(options);
+    if (tab === 'profile') return fetchSellerProfileOnce(options);
     return;
   };
 
@@ -813,7 +925,7 @@ export default function App() {
 
   useEffect(() => {
     if (!catalogViews.includes(view)) return;
-    void fetchCatalogOnce({ force: view === 'catalog', page: view === 'catalog' ? catalogPage : 1 });
+    void fetchCatalogOnce({ page: view === 'catalog' ? catalogPage : 1 });
   }, [view, catalogFilter]);
 
   useEffect(() => {
@@ -843,9 +955,10 @@ export default function App() {
       setCartLoading(false);
       cartRequestRef.current = null;
       sellerDashboardRequestRef.current = {};
-      lastSellerDashboardFetchRef.current = { products: 0, quotes: 0, requests: 0, sales: 0 };
+      lastSellerDashboardFetchRef.current = { products: 0, quotes: 0, requests: 0, sales: 0, earnings: 0, profile: 0 };
       setSellerProducts([]);
       setSellerQuotes([]);
+      setSellerEarnings(null);
       setClientQuotes([]);
       setClientQuotesError('');
       clientQuotesRequestRef.current = null;
@@ -909,9 +1022,10 @@ export default function App() {
           setCartLoading(false);
           cartRequestRef.current = null;
           sellerDashboardRequestRef.current = {};
-          lastSellerDashboardFetchRef.current = { products: 0, quotes: 0, requests: 0, sales: 0 };
+          lastSellerDashboardFetchRef.current = { products: 0, quotes: 0, requests: 0, sales: 0, earnings: 0, profile: 0 };
           setSellerProducts([]);
           setSellerQuotes([]);
+          setSellerEarnings(null);
           setClientQuotes([]);
           setClientQuotesError('');
           clientQuotesRequestRef.current = null;
@@ -1310,13 +1424,15 @@ export default function App() {
     setCartNotice('');
   };
 
-  const removeFromCart = async (productId: string) => {
-    const item = cartItems.find((entry) => entry.productId === productId);
+  const getCartEntryKey = (entry: CartItem) => entry.productId ?? entry.quoteId ?? '';
+
+  const removeFromCart = async (cartEntryKey: string) => {
+    const item = cartItems.find((entry) => getCartEntryKey(entry) === cartEntryKey);
 
     try {
       if (item?.id) {
         await removeRemoteCartItem(item.id);
-        updateCartState((currentItems) => currentItems.filter((entry) => entry.productId !== productId));
+        updateCartState((currentItems) => currentItems.filter((entry) => getCartEntryKey(entry) !== cartEntryKey));
         return;
       }
       setCartNotice('No pudimos identificar el item del carrito. Actualiza la pagina e intenta nuevamente.');
@@ -1325,14 +1441,14 @@ export default function App() {
     }
   };
 
-  const increaseQuantity = async (productId: string) => {
-    const item = cartItems.find((entry) => entry.productId === productId);
+  const increaseQuantity = async (cartEntryKey: string) => {
+    const item = cartItems.find((entry) => getCartEntryKey(entry) === cartEntryKey);
 
     try {
       if (item?.id) {
         const updated = await updateRemoteCartItem(item.id, item.quantity + 1);
         updateCartState((currentItems) => currentItems.map((entry) => (
-          entry.productId === productId
+          getCartEntryKey(entry) === cartEntryKey
             ? { ...entry, ...updated, product: updated.product ?? entry.product }
             : entry
         )));
@@ -1344,14 +1460,14 @@ export default function App() {
     }
   };
 
-  const decreaseQuantity = async (productId: string) => {
-    const item = cartItems.find((entry) => entry.productId === productId);
+  const decreaseQuantity = async (cartEntryKey: string) => {
+    const item = cartItems.find((entry) => getCartEntryKey(entry) === cartEntryKey);
 
     try {
       if (item?.id && item.quantity > 1) {
         const updated = await updateRemoteCartItem(item.id, item.quantity - 1);
         updateCartState((currentItems) => currentItems.map((entry) => (
-          entry.productId === productId
+          getCartEntryKey(entry) === cartEntryKey
             ? { ...entry, ...updated, product: updated.product ?? entry.product }
             : entry
         )));
@@ -1360,7 +1476,7 @@ export default function App() {
 
       if (item?.id) {
         await removeRemoteCartItem(item.id);
-        updateCartState((currentItems) => currentItems.filter((entry) => entry.productId !== productId));
+        updateCartState((currentItems) => currentItems.filter((entry) => getCartEntryKey(entry) !== cartEntryKey));
         return;
       }
       setCartNotice('No pudimos identificar el item del carrito. Actualiza la pagina e intenta nuevamente.');
@@ -1381,11 +1497,14 @@ export default function App() {
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (loginLoading) return;
+
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get('email') ?? '');
     const password = String(formData.get('password') ?? '');
 
     try {
+      setLoginLoading(true);
       clearUserModuleCaches();
       const user = await loginWithBackend(email, password);
 
@@ -1449,6 +1568,8 @@ export default function App() {
       setViewWithHistory(nextView, { replace: true });
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : 'Correo o contrasena incorrectos.');
+    } finally {
+      setLoginLoading(false);
     }
   };
 
@@ -1786,6 +1907,26 @@ export default function App() {
     return product;
   };
 
+  const handleUpdateProducerProfile = async (data: Record<string, string>) => {
+    const producer = await updateMyProducer(data);
+    setCatalogProducers((current) => [producer, ...current.filter((entry) => entry.id !== producer.id)]);
+    setActiveProducerId(producer.id);
+    invalidateCatalogCache();
+    lastSellerDashboardFetchRef.current = { ...lastSellerDashboardFetchRef.current, profile: Date.now() };
+  };
+
+  const handleRespondQuote = async (
+    quoteId: string,
+    data: { quotedPrice: number; quotedDeliveryDays: number; sellerComment?: string; validUntil?: string },
+  ) => {
+    const quote = await respondQuote(quoteId, data);
+    setSellerQuotes((current) => {
+      const nextQuotes = current.map((entry) => (entry.id === quoteId ? quote : entry));
+      updateSellerDashboardCache(sellerProducts, nextQuotes, purchaseRequests, sales, sellerEarnings);
+      return nextQuotes;
+    });
+  };
+
   const handleCreateClaim = async (orderId: string, reason: string, description: string) => {
     try {
       const claim = await createRemoteClaim(orderId, mapClaimReasonToApi(reason), description);
@@ -2033,7 +2174,7 @@ export default function App() {
     }
 
     if (view === 'login') {
-      return <LoginView error={loginError} onLogin={handleLogin} onRegister={handleRegister} />;
+      return <LoginView error={loginError} isLoading={loginLoading} onLogin={handleLogin} onRegister={handleRegister} />;
     }
 
     if (view === 'orderSuccess') {
@@ -2102,6 +2243,7 @@ export default function App() {
           quotes={sellerQuotes}
           requests={purchaseRequests}
           sales={sales}
+          earnings={sellerEarnings}
           onClearEditProduct={() => setSellerEditingProductId(null)}
           onConfirmRequest={handleSellerConfirmRequest}
           onCreateProduct={handleCreateProduct}
@@ -2109,7 +2251,9 @@ export default function App() {
           onMarkSaleDispatched={handleMarkSaleDispatched}
           onMarkSaleInPreparation={handleMarkSaleInPreparation}
           onMarkSaleReady={handleMarkSaleReady}
+          onRespondQuote={handleRespondQuote}
           onTabChange={setSellerActiveTab}
+          onUpdateProducerProfile={handleUpdateProducerProfile}
           onViewProduct={(productId) => openProduct(productId, 'sellerDashboard')}
           onRejectRequest={handleSellerRejectRequest}
           onDeleteProduct={handleDeleteProduct}

@@ -30,7 +30,11 @@ const invitationStatusLabels: Record<Invitation['status'], string> = {
 const internalRoles: InternalRole[] = ['ADVISOR', 'SELLER', 'ADMIN'];
 
 export default function UserManagementView() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [usersByRole, setUsersByRole] = useState<Record<InternalRole, User[]>>({
+    ADVISOR: [],
+    SELLER: [],
+    ADMIN: [],
+  });
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [role, setRole] = useState<InternalRole>('ADVISOR');
   const [message, setMessage] = useState('');
@@ -41,11 +45,25 @@ export default function UserManagementView() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [nextUsers, nextInvitations] = await Promise.all([
-        getUsers({ limit: 10, page: 1 }),
+      const [advisors, sellers, admins, nextInvitations] = await Promise.all([
+        getUsers({ role: 'ADVISOR', limit: 10, page: 1 }),
+        getUsers({ role: 'SELLER', limit: 10, page: 1 }),
+        getUsers({ role: 'ADMIN', limit: 10, page: 1 }),
         getInvitations(),
       ]);
-      setUsers(nextUsers.items.filter((user) => user.role && internalRoles.includes(user.role as InternalRole)));
+
+      if (import.meta.env.DEV) {
+        console.debug('[admin-users] advisors', advisors.items.length);
+        console.debug('[admin-users] sellers', sellers.items.length);
+        console.debug('[admin-users] admins', admins.items.length);
+        console.debug('[admin-users] invitations', nextInvitations.length);
+      }
+
+      setUsersByRole({
+        ADVISOR: advisors.items,
+        SELLER: sellers.items,
+        ADMIN: admins.items,
+      });
       setInvitations(nextInvitations);
       setError('');
     } catch (loadError) {
@@ -61,9 +79,9 @@ export default function UserManagementView() {
 
   const groupedAccess = useMemo(() => internalRoles.map((entryRole) => ({
     role: entryRole,
-    users: users.filter((user) => user.role === entryRole),
+    users: usersByRole[entryRole],
     invitations: invitations.filter((invitation) => invitation.role === entryRole && invitation.status === 'PENDING'),
-  })), [users, invitations]);
+  })), [usersByRole, invitations]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -95,9 +113,17 @@ export default function UserManagementView() {
         ? await activateUser(user.id)
         : await deactivateUser(user.id);
 
-      setUsers((currentUsers) => currentUsers.map((entry) => (
-        entry.id === updatedUser.id ? updatedUser : entry
-      )));
+      setUsersByRole((current) => {
+        const userRole = (user.role ?? updatedUser.role) as InternalRole;
+        if (!internalRoles.includes(userRole)) return current;
+
+        return {
+          ...current,
+          [userRole]: updatedUser.isActive === false
+            ? current[userRole].filter((entry) => entry.id !== updatedUser.id)
+            : current[userRole].map((entry) => (entry.id === updatedUser.id ? updatedUser : entry)),
+        };
+      });
       setMessage(`${updatedUser.name} fue ${updatedUser.isActive === false ? 'desactivado' : 'activado'}.`);
       setError('');
     } catch (statusError) {
@@ -112,8 +138,16 @@ export default function UserManagementView() {
 
     try {
       await removeUser(user.id);
-      setUsers((currentUsers) => currentUsers.filter((entry) => entry.id !== user.id));
-      setMessage(`${user.name} fue eliminado de la gestion activa.`);
+      setUsersByRole((current) => {
+        const userRole = user.role as InternalRole;
+        if (!internalRoles.includes(userRole)) return current;
+
+        return {
+          ...current,
+          [userRole]: current[userRole].filter((entry) => entry.id !== user.id),
+        };
+      });
+      setMessage(`${user.name} fue desactivado correctamente.`);
       setError('');
     } catch (removeError) {
       setError(removeError instanceof Error ? removeError.message : 'No se pudo eliminar el usuario.');

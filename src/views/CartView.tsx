@@ -31,6 +31,7 @@ const availabilityLabels = {
 };
 
 const getAvailabilityLabel = (product: Product) => (
+  product.badge === 'Cotizacion' ? 'Cotizacion respondida' :
   product.requiresConfirmation ? 'Requiere confirmacion' : availabilityLabels[product.availabilityType] ?? 'Requiere confirmacion'
 );
 
@@ -172,14 +173,16 @@ export default function CartView({
           ) : (
             <div className={styles.items}>
               {isLoading && <p className={styles.notice}>Actualizando carrito...</p>}
-              {items.map(({ product, quantity }) => (
-                <article className={styles.item} key={product.id}>
+              {items.map(({ id, product, productId, quoteId, quantity }) => {
+                const itemKey = productId ?? quoteId ?? product.id;
+                return (
+                <article className={styles.item} key={id ?? itemKey}>
                   {showQuoteSelection && (
                     <label className={styles.quoteCheckbox}>
                       <input
                         type="checkbox"
-                        checked={selectedQuoteProductIds.includes(product.id)}
-                        onChange={() => toggleQuoteProduct(product.id)}
+                        checked={selectedQuoteProductIds.includes(itemKey)}
+                        onChange={() => toggleQuoteProduct(itemKey)}
                       />
                       <span>Seleccionar para cotizar</span>
                     </label>
@@ -200,20 +203,21 @@ export default function CartView({
                   </div>
 
                   <div className={styles.quantity}>
-                    <button type="button" onClick={() => onDecrease(product.id)} aria-label="Disminuir cantidad">
+                    <button type="button" onClick={() => onDecrease(itemKey)} aria-label="Disminuir cantidad">
                       −
                     </button>
                     <span>{quantity}</span>
-                    <button type="button" onClick={() => onIncrease(product.id)} aria-label="Aumentar cantidad">
+                    <button type="button" onClick={() => onIncrease(itemKey)} aria-label="Aumentar cantidad">
                       +
                     </button>
                   </div>
 
-                  <button className={styles.removeButton} type="button" onClick={() => onRemove(product.id)}>
+                  <button className={styles.removeButton} type="button" onClick={() => onRemove(itemKey)}>
                     Eliminar
                   </button>
                 </article>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

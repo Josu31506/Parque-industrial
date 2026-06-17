@@ -55,6 +55,8 @@ export type QuoteType = 'PRODUCT_BASED' | 'REFERENCE_IMAGE';
 
 export type QuoteStatus =
   | 'PENDING_REVIEW'
+  | 'ANSWERED'
+  | 'ACCEPTED'
   | 'IN_COORDINATION'
   | 'CONSULTING_PRODUCER'
   | 'PROPOSAL_RECEIVED'
@@ -149,6 +151,11 @@ export type Producer = {
   rating?: number;
   image?: string;
   avatar?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankAccountType?: string;
+  cci?: string;
+  accountHolderName?: string;
 };
 
 export type Category = {
@@ -163,7 +170,10 @@ export type Category = {
 
 export type CartItem = {
   id?: string;
-  productId: string;
+  productId?: string;
+  quoteId?: string;
+  titleSnapshot?: string;
+  quotedPriceSnapshot?: number;
   quantity: number;
   product?: Product;
 };
@@ -206,6 +216,10 @@ export type PurchaseRequest = {
   status: PurchaseRequestStatus;
   createdAt: string;
   estimatedDeliveryDate?: string;
+  deliveredAt?: string;
+  claimDeadlineAt?: string;
+  completedAt?: string;
+  fundsReleasedAt?: string;
   deliveryDays: number;
   total: number;
   convertedOrderId?: string;
@@ -251,8 +265,53 @@ export type Sale = {
   paymentStatus: PaymentStatus;
   fundsStatus: FundsStatus;
   readyDate?: string;
+  releasedAt?: string;
+  paidAt?: string;
   observation?: string;
   createdAt: string;
+};
+
+export type SellerEarningsItem = {
+  saleId: string;
+  orderId: string;
+  orderNumber?: number;
+  createdAt: string;
+  deliveredAt?: string;
+  claimDeadlineAt?: string;
+  releasedAt?: string;
+  paidAt?: string;
+  grossAmount: number;
+  commissionAmount: number;
+  netAmount: number;
+  fundsStatus: FundsStatus;
+  payoutStatus: 'HELD' | 'AVAILABLE' | 'PAID' | 'HELD_BY_CLAIM';
+};
+
+export type SellerEarningsSummary = {
+  month: string;
+  grossTotal: number;
+  commissionTotal: number;
+  netTotal: number;
+  heldTotal: number;
+  releasedTotal: number;
+  paidTotal: number;
+};
+
+export type SellerEarningsMonthly = SellerEarningsSummary & {
+  salesCount: number;
+};
+
+export type SellerEarnings = {
+  summary: SellerEarningsSummary;
+  monthly: SellerEarningsMonthly[];
+  items: SellerEarningsItem[];
+  bankAccount?: {
+    bankName?: string | null;
+    bankAccountNumber?: string | null;
+    bankAccountType?: string | null;
+    cci?: string | null;
+    accountHolderName?: string | null;
+  };
 };
 
 export type Claim = {
@@ -301,7 +360,12 @@ export type Quote = {
   customerId: string;
   type: QuoteType;
   productId?: string;
+  producerId?: string;
   status: QuoteStatus;
+  quotedPrice?: number;
+  quotedDeliveryDays?: number;
+  sellerComment?: string;
+  validUntil?: string;
   title: string;
   description: string;
   quantity: number;
@@ -364,6 +428,12 @@ export type ApiProducer = {
   isApproved?: boolean;
   phone?: string | null;
   address?: string | null;
+  imageUrl?: string | null;
+  bankName?: string | null;
+  bankAccountNumber?: string | null;
+  bankAccountType?: string | null;
+  cci?: string | null;
+  accountHolderName?: string | null;
 };
 
 export type ApiCategory = {
@@ -403,15 +473,21 @@ export type ApiProduct = {
 export type ApiCartItem = {
   id: string;
   userId: string;
-  productId: string;
+  productId?: string | null;
+  quoteId?: string | null;
+  titleSnapshot?: string | null;
+  quotedPriceSnapshot?: number | string | null;
   quantity: number;
-  product?: ApiProduct;
+  product?: ApiProduct | null;
+  quote?: ApiQuote | null;
 };
 
 export type ApiPurchaseRequestItem = {
   id: string;
   purchaseRequestId?: string;
-  productId: string;
+  productId?: string | null;
+  quoteId?: string | null;
+  titleSnapshot?: string | null;
   producerId: string;
   quantity: number;
   unitPrice: number | string;
@@ -445,13 +521,16 @@ export type ApiPurchaseRequest = {
 export type ApiOrderItem = {
   id: string;
   orderId?: string;
-  productId: string;
+  productId?: string | null;
+  quoteId?: string | null;
+  titleSnapshot?: string | null;
   producerId: string;
   quantity: number;
   unitPrice: number | string;
   totalPrice: number | string;
   status?: string;
   product?: ApiProduct | null;
+  quote?: ApiQuote | null;
   producer?: ApiProducer | null;
 };
 
@@ -467,6 +546,10 @@ export type ApiOrder = {
   paymentStatus?: PaymentStatus | null;
   fundsStatus?: FundsStatus | null;
   estimatedDeliveryDate?: string | null;
+  deliveredAt?: string | null;
+  claimDeadlineAt?: string | null;
+  completedAt?: string | null;
+  fundsReleasedAt?: string | null;
   createdAt: string;
   items?: ApiOrderItem[];
   sales?: ApiSale[];
@@ -475,12 +558,15 @@ export type ApiOrder = {
 export type ApiSaleItem = {
   id: string;
   saleId?: string;
-  productId: string;
+  productId?: string | null;
+  quoteId?: string | null;
+  titleSnapshot?: string | null;
   quantity: number;
   unitPrice: number | string;
   totalPrice: number | string;
   status?: string;
   product?: ApiProduct | null;
+  quote?: ApiQuote | null;
 };
 
 export type ApiSale = {
@@ -495,6 +581,8 @@ export type ApiSale = {
   paymentStatus: PaymentStatus;
   fundsStatus: FundsStatus;
   readyDate?: string | null;
+  releasedAt?: string | null;
+  paidAt?: string | null;
   observation?: string | null;
   createdAt: string;
   producer?: ApiProducer | null;
@@ -530,7 +618,12 @@ export type ApiQuote = {
   customerId: string;
   type: QuoteType;
   productId?: string | null;
+  producerId?: string | null;
   status: QuoteStatus;
+  quotedPrice?: number | string | null;
+  quotedDeliveryDays?: number | null;
+  sellerComment?: string | null;
+  validUntil?: string | null;
   title: string;
   description: string;
   quantity: number;

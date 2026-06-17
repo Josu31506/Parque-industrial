@@ -1,4 +1,4 @@
-import type { ApiSale, MarketplaceItem, PaginatedResponse, Sale } from '../types';
+import type { ApiSale, MarketplaceItem, PaginatedResponse, Sale, SellerEarnings } from '../types';
 import { getRequest, patchRequest } from './api';
 
 const formatDate = (value: string | Date | null | undefined) => {
@@ -22,8 +22,10 @@ export const mapApiSaleToSale = (sale: ApiSale): Sale => {
 
     return {
       productId: item.productId,
+      quoteId: item.quoteId ?? undefined,
+      titleSnapshot: item.titleSnapshot ?? undefined,
       quantity: item.quantity,
-      title: item.product?.title ?? 'Producto no disponible',
+      title: item.product?.title ?? item.titleSnapshot ?? item.quote?.title ?? 'Producto cotizado',
       price: `S/. ${unitPrice.toLocaleString('es-PE')}`,
       numericPrice: unitPrice,
       producerId: sale.producerId,
@@ -44,6 +46,8 @@ export const mapApiSaleToSale = (sale: ApiSale): Sale => {
     paymentStatus: sale.paymentStatus,
     fundsStatus: sale.fundsStatus,
     readyDate: formatDate(sale.readyDate),
+    releasedAt: formatDate(sale.releasedAt),
+    paidAt: formatDate(sale.paidAt),
     observation: sale.observation ?? undefined,
     createdAt: formatDate(sale.createdAt) ?? '',
   };
@@ -72,6 +76,10 @@ export async function getMySales(options: { limit?: number; page?: number } = {}
   });
   const response = await getRequest<ApiSalesResponse>(`/sales/my?${params.toString()}`);
   return normalizeSalesResponse(response);
+}
+
+export async function getMyEarnings(month: string) {
+  return getRequest<SellerEarnings>(`/sales/earnings?month=${encodeURIComponent(month)}&page=1&limit=10`);
 }
 
 export async function getSaleById(id: string) {

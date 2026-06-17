@@ -4,13 +4,14 @@ import styles from './LoginView.module.css';
 
 type LoginViewProps = {
   error?: string;
+  isLoading?: boolean;
   onLogin: (event: FormEvent<HTMLFormElement>) => void;
   onRegister: (event: FormEvent<HTMLFormElement>) => void;
 };
 
 type AuthMode = 'login' | 'register';
 
-export default function LoginView({ error, onLogin, onRegister }: LoginViewProps) {
+export default function LoginView({ error, isLoading = false, onLogin, onRegister }: LoginViewProps) {
   const [mode, setMode] = useState<AuthMode>('login');
 
   return (
@@ -44,7 +45,9 @@ export default function LoginView({ error, onLogin, onRegister }: LoginViewProps
 
             {error && <span className={styles.error}>{error}</span>}
 
-            <button className="primaryButton" type="submit">Iniciar sesion</button>
+            <button className="primaryButton" type="submit" disabled={isLoading}>
+              {isLoading ? 'Ingresando...' : 'Iniciar sesion'}
+            </button>
 
             <div className={styles.testCredentials}>
               <span>Credenciales de prueba</span>

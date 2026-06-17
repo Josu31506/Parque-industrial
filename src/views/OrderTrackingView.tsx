@@ -50,6 +50,20 @@ export default function OrderTrackingView({
   const readyProducers = orderSales.filter((sale) => sale.status === 'READY_FOR_DISPATCH' || sale.status === 'DISPATCHED' || sale.status === 'DELIVERED').length;
   const canConfirmReceived = order?.apiStatus === 'DISPATCHED';
   const isInClaim = order?.apiStatus === 'IN_CLAIM' || order?.fundsStatus === 'HELD_BY_CLAIM';
+  const claimDeadline = order?.claimDeadlineAt ? new Date(order.claimDeadlineAt) : null;
+  const canReportProblem = Boolean(
+    order
+    && order.apiStatus === 'DELIVERED'
+    && order.fundsStatus !== 'RELEASED'
+    && order.fundsStatus !== 'HELD_BY_CLAIM'
+    && (!claimDeadline || new Date() <= claimDeadline),
+  );
+  const isClaimDeadlineExpired = Boolean(
+    order
+    && order.apiStatus === 'DELIVERED'
+    && claimDeadline
+    && new Date() > claimDeadline,
+  );
 
   const handleClaimSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -104,6 +118,9 @@ export default function OrderTrackingView({
               <div className={styles.timeline}>
                 {isInClaim && (
                   <p className={styles.claimNotice}>Este pedido tiene un reclamo activo. Los fondos permaneceran retenidos hasta resolverlo.</p>
+                )}
+                {isClaimDeadlineExpired && (
+                  <p className={styles.claimNotice}>El plazo para reportar problemas de este pedido vencio.</p>
                 )}
                 {steps.map((step, index) => {
                   const isDone = index <= completedStepIndex;
@@ -192,9 +209,11 @@ export default function OrderTrackingView({
                   Confirmar recepcion
                 </button>
               )}
-              <button className="accentButton" type="button" onClick={() => setShowClaimForm((current) => !current)}>
-                Reportar problema
-              </button>
+              {canReportProblem && (
+                <button className="accentButton" type="button" onClick={() => setShowClaimForm((current) => !current)}>
+                  Reportar problema
+                </button>
+              )}
             </>
           )}
         </div>

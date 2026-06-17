@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import imageCompression from 'browser-image-compression';
 import type { ProductFormInput } from '../services/productsService';
 import { uploadProductImage } from '../services/uploadsService';
-import type { Category, Producer, Product, PurchaseRequest, PurchaseRequestGroup, Quote, Sale } from '../types';
+import type { Category, Producer, Product, PurchaseRequest, PurchaseRequestGroup, Quote, Sale, SellerEarnings } from '../types';
 import { getCategoryDisplayName, getSaleDisplayName } from '../utils/displayNames';
 import {
   getActiveLabel,
@@ -15,7 +15,7 @@ import {
 } from '../utils/statusLabels';
 import styles from './SellerDashboardView.module.css';
 
-type SellerDashboardTab = 'summary' | 'products' | 'create' | 'requests' | 'sales' | 'quotes';
+type SellerDashboardTab = 'summary' | 'products' | 'create' | 'requests' | 'sales' | 'quotes' | 'earnings' | 'profile';
 
 type SellerDashboardViewProps = {
   activeProducerId: string;
@@ -29,6 +29,7 @@ type SellerDashboardViewProps = {
   quotes: Quote[];
   requests: PurchaseRequest[];
   sales: Sale[];
+  earnings?: SellerEarnings | null;
   onConfirmRequest: (requestId: string, producerId: string, readyDate: string, observation: string) => void;
   onCreateProduct: (data: ProductFormInput) => Promise<Product>;
   onClearEditProduct?: () => void;
@@ -37,7 +38,9 @@ type SellerDashboardViewProps = {
   onMarkSaleDispatched: (saleId: string) => Promise<void>;
   onMarkSaleInPreparation: (saleId: string) => Promise<void>;
   onMarkSaleReady: (saleId: string) => Promise<void>;
+  onRespondQuote: (quoteId: string, data: { quotedPrice: number; quotedDeliveryDays: number; sellerComment?: string; validUntil?: string }) => Promise<void>;
   onTabChange?: (tab: SellerDashboardTab) => void;
+  onUpdateProducerProfile: (data: Record<string, string>) => Promise<void>;
   onViewProduct: (productId: string) => void;
   onRejectRequest: (requestId: string, producerId: string, observation: string) => void;
   onUpdateProduct: (productId: string, data: ProductFormInput) => Promise<Product>;
@@ -73,7 +76,7 @@ const timeEnd = (label: string) => {
   if (isDevelopment) console.timeEnd(label);
 };
 
-const validSellerTabs: SellerDashboardTab[] = ['summary', 'products', 'create', 'requests', 'sales', 'quotes'];
+const validSellerTabs: SellerDashboardTab[] = ['summary', 'products', 'create', 'requests', 'sales', 'quotes', 'earnings', 'profile'];
 
 const isSellerDashboardTab = (value: string | null): value is SellerDashboardTab => (
   Boolean(value && validSellerTabs.includes(value as SellerDashboardTab))
@@ -456,6 +459,7 @@ export default function SellerDashboardView({
   quotes,
   requests,
   sales,
+  earnings,
   onConfirmRequest,
   onCreateProduct,
   onClearEditProduct,
@@ -464,7 +468,9 @@ export default function SellerDashboardView({
   onMarkSaleDispatched,
   onMarkSaleInPreparation,
   onMarkSaleReady,
+  onRespondQuote,
   onTabChange,
+  onUpdateProducerProfile,
   onViewProduct,
   onRejectRequest,
   onUpdateProduct,
@@ -482,6 +488,8 @@ export default function SellerDashboardView({
     run: () => Promise<void>;
   } | null>(null);
   const [loadingSaleId, setLoadingSaleId] = useState<string | null>(null);
+  const [respondingQuoteId, setRespondingQuoteId] = useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     if (isSellerDashboardTab(localStorage.getItem(SELLER_TAB_STORAGE_KEY))) return;
@@ -588,6 +596,55 @@ export default function SellerDashboardView({
     }
   };
 
+  const handleRespondQuote = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!respondingQuoteId) return;
+    const formData = new FormData(event.currentTarget);
+    const quotedPrice = Number(getInputValue(formData, 'quotedPrice'));
+    const quotedDeliveryDays = Number(getInputValue(formData, 'quotedDeliveryDays'));
+
+    try {
+      await onRespondQuote(respondingQuoteId, {
+        quotedPrice,
+        quotedDeliveryDays,
+        sellerComment: getInputValue(formData, 'sellerComment') || undefined,
+        validUntil: getInputValue(formData, 'validUntil') || undefined,
+      });
+      setRespondingQuoteId(null);
+      setMessage('Cotizacion respondida correctamente.');
+    } catch (quoteError) {
+      setMessage(quoteError instanceof Error ? quoteError.message : 'No se pudo responder la cotizacion.');
+    }
+  };
+
+  const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    setSavingProfile(true);
+    setMessage('');
+
+    try {
+      await onUpdateProducerProfile({
+        businessName: getInputValue(formData, 'businessName'),
+        type: getInputValue(formData, 'type'),
+        location: getInputValue(formData, 'location'),
+        description: getInputValue(formData, 'description'),
+        imageUrl: getInputValue(formData, 'imageUrl'),
+        phone: getInputValue(formData, 'phone'),
+        bankName: getInputValue(formData, 'bankName'),
+        bankAccountNumber: getInputValue(formData, 'bankAccountNumber'),
+        bankAccountType: getInputValue(formData, 'bankAccountType'),
+        cci: getInputValue(formData, 'cci'),
+        accountHolderName: getInputValue(formData, 'accountHolderName'),
+      });
+      setMessage('Perfil de productora actualizado correctamente.');
+    } catch (profileError) {
+      setMessage(profileError instanceof Error ? profileError.message : 'No se pudo actualizar el perfil.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   return (
     <main className={styles.page}>
       <section className={`${styles.content} container`}>
@@ -603,6 +660,8 @@ export default function SellerDashboardView({
           <button className={tab === 'requests' ? styles.active : undefined} type="button" onClick={() => setActiveTab('requests')}>Solicitudes de compra</button>
           <button className={tab === 'sales' ? styles.active : undefined} type="button" onClick={() => setActiveTab('sales')}>Ventas</button>
           <button className={tab === 'quotes' ? styles.active : undefined} type="button" onClick={() => setActiveTab('quotes')}>Cotizaciones</button>
+          <button className={tab === 'earnings' ? styles.active : undefined} type="button" onClick={() => setActiveTab('earnings')}>Ingresos</button>
+          <button className={tab === 'profile' ? styles.active : undefined} type="button" onClick={() => setActiveTab('profile')}>Perfil de productora</button>
         </div>
 
         {message && <p className={styles.success}>{message}</p>}
@@ -870,10 +929,93 @@ export default function SellerDashboardView({
                   <p><span>Cantidad</span><strong>{quote.quantity}</strong></p>
                   <p><span>Creada</span><strong>{quote.createdAt}</strong></p>
                   <p><span>Cliente</span><strong>{quote.customer?.name ?? 'Cliente registrado'}</strong></p>
+                  {quote.quotedPrice && <p><span>Precio respondido</span><strong>{formatMoney(quote.quotedPrice)}</strong></p>}
+                  {quote.quotedDeliveryDays && <p><span>Plazo</span><strong>{quote.quotedDeliveryDays} dias</strong></p>}
                 </div>
+                {(quote.status === 'PENDING_REVIEW' || quote.status === 'IN_COORDINATION' || quote.status === 'CONSULTING_PRODUCER') && (
+                  <div className={styles.actions}>
+                    <button className="primaryButton" type="button" onClick={() => setRespondingQuoteId(quote.id)}>
+                      Gestionar cotizacion
+                    </button>
+                  </div>
+                )}
               </article>
             ))}
           </div>
+        )}
+
+        {tab === 'earnings' && (
+          <div className={styles.list}>
+            {!earnings ? (
+              <div className={styles.empty}>Cargando ingresos...</div>
+            ) : (
+              <>
+                <div className={styles.summaryGrid}>
+                  <article><span>Vendido bruto</span><strong>{formatMoney(earnings.summary.grossTotal)}</strong></article>
+                  <article><span>Comision</span><strong>{formatMoney(earnings.summary.commissionTotal)}</strong></article>
+                  <article><span>Neto</span><strong>{formatMoney(earnings.summary.netTotal)}</strong></article>
+                  <article><span>Retenido</span><strong>{formatMoney(earnings.summary.heldTotal)}</strong></article>
+                  <article><span>Disponible</span><strong>{formatMoney(earnings.summary.releasedTotal)}</strong></article>
+                  <article><span>Pagado</span><strong>{formatMoney(earnings.summary.paidTotal)}</strong></article>
+                </div>
+                <article className={styles.card}>
+                  <h2>Cuenta configurada</h2>
+                  <div className={styles.groupFacts}>
+                    <p><span>Banco</span><strong>{earnings.bankAccount?.bankName ?? 'No configurado'}</strong></p>
+                    <p><span>Cuenta</span><strong>{earnings.bankAccount?.bankAccountNumber ?? 'No configurado'}</strong></p>
+                    <p><span>CCI</span><strong>{earnings.bankAccount?.cci ?? 'No configurado'}</strong></p>
+                    <p><span>Titular</span><strong>{earnings.bankAccount?.accountHolderName ?? 'No configurado'}</strong></p>
+                  </div>
+                </article>
+                {earnings.items.map((item) => (
+                  <article className={styles.card} key={item.saleId}>
+                    <div className={styles.cardHeader}>
+                      <div>
+                        <h2>Pedido N. {String(item.orderNumber ?? '').padStart(6, '0')}</h2>
+                        <p>Venta: {item.createdAt}</p>
+                      </div>
+                      <span className={styles.status}>{getFundsStatusLabel(item.fundsStatus)}</span>
+                    </div>
+                    <div className={styles.moneyGrid}>
+                      <p><span>Bruto</span><strong>{formatMoney(item.grossAmount)}</strong></p>
+                      <p><span>Comision</span><strong>{formatMoney(item.commissionAmount)}</strong></p>
+                      <p><span>Neto</span><strong>{formatMoney(item.netAmount)}</strong></p>
+                      <p><span>Liberado</span><strong>{item.releasedAt ?? 'Pendiente'}</strong></p>
+                    </div>
+                  </article>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+
+        {tab === 'profile' && producer && (
+          <form className={styles.productForm} onSubmit={handleProfileSubmit}>
+            <div className={styles.formHeader}>
+              <div>
+                <h2>Perfil de productora</h2>
+                <p>Estos datos se muestran en el perfil publico y se usan para pagos.</p>
+              </div>
+            </div>
+            <div className={styles.formGridWide}>
+              <label><span>Nombre comercial</span><input name="businessName" required defaultValue={producer.name} /></label>
+              <label><span>Tipo</span><input name="type" required defaultValue={producer.type} /></label>
+              <label><span>Ubicacion</span><input name="location" required defaultValue={producer.location} /></label>
+              <label><span>Telefono</span><input name="phone" defaultValue={producer.phone ?? ''} /></label>
+              <label className={styles.full}><span>Descripcion</span><textarea name="description" required defaultValue={producer.description} /></label>
+              <label className={styles.full}><span>Imagen o logo URL</span><input name="imageUrl" defaultValue={producer.image ?? ''} /></label>
+              <label><span>Banco</span><input name="bankName" defaultValue={producer.bankName ?? ''} /></label>
+              <label><span>Tipo de cuenta</span><input name="bankAccountType" defaultValue={producer.bankAccountType ?? ''} /></label>
+              <label><span>Numero de cuenta</span><input name="bankAccountNumber" defaultValue={producer.bankAccountNumber ?? ''} /></label>
+              <label><span>CCI</span><input name="cci" defaultValue={producer.cci ?? ''} /></label>
+              <label className={styles.full}><span>Titular</span><input name="accountHolderName" defaultValue={producer.accountHolderName ?? ''} /></label>
+            </div>
+            <div className={styles.actions}>
+              <button className="primaryButton" type="submit" disabled={savingProfile}>
+                {savingProfile ? 'Guardando...' : 'Guardar perfil'}
+              </button>
+            </div>
+          </form>
         )}
       </section>
       {pendingSaleAction && (
@@ -893,6 +1035,33 @@ export default function SellerDashboardView({
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {respondingQuoteId && (
+        <div className={styles.modalOverlay} role="presentation">
+          <form className={styles.modal} onSubmit={handleRespondQuote} aria-modal="true">
+            <h2>Responder cotizacion</h2>
+            <label>
+              <span>Precio cotizado</span>
+              <input name="quotedPrice" type="number" min="0.01" max="999999.99" step="0.01" required />
+            </label>
+            <label>
+              <span>Plazo de entrega (dias)</span>
+              <input name="quotedDeliveryDays" type="number" min="1" required />
+            </label>
+            <label>
+              <span>Validez</span>
+              <input name="validUntil" type="date" />
+            </label>
+            <label>
+              <span>Comentario</span>
+              <textarea name="sellerComment" placeholder="Condiciones, materiales o acabados incluidos" />
+            </label>
+            <div className={styles.modalActions}>
+              <button type="button" onClick={() => setRespondingQuoteId(null)}>Cancelar</button>
+              <button type="submit">Enviar respuesta</button>
+            </div>
+          </form>
         </div>
       )}
     </main>

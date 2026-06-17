@@ -48,7 +48,12 @@ export const mapApiQuoteToQuote = (quote: ApiQuote): Quote => ({
   customerId: quote.customerId,
   type: quote.type,
   productId: quote.productId ?? undefined,
+  producerId: quote.producerId ?? undefined,
   status: quote.status,
+  quotedPrice: quote.quotedPrice === null || quote.quotedPrice === undefined ? undefined : Number(quote.quotedPrice),
+  quotedDeliveryDays: quote.quotedDeliveryDays ?? undefined,
+  sellerComment: quote.sellerComment ?? undefined,
+  validUntil: formatDate(quote.validUntil),
   title: quote.title,
   description: quote.description,
   quantity: quote.quantity,
@@ -131,6 +136,17 @@ export async function createQuoteResolution(id: string, data: CreateQuoteResolut
 }
 
 export async function addQuoteToCart(id: string) {
-  const response = await postRequest<ApiQuote>(`/quotes/${id}/add-to-cart`);
+  return postRequest<import('../types').ApiCartItem>(`/quotes/${id}/add-to-cart`);
+}
+
+export type RespondQuoteInput = {
+  quotedPrice: number;
+  quotedDeliveryDays: number;
+  sellerComment?: string;
+  validUntil?: string;
+};
+
+export async function respondQuote(id: string, data: RespondQuoteInput) {
+  const response = await patchRequest<ApiQuote, RespondQuoteInput>(`/quotes/${id}/respond`, data);
   return mapApiQuoteToQuote(response);
 }
