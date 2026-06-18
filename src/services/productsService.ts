@@ -19,6 +19,8 @@ const money = (value: number | string) => {
   return Number.isNaN(numeric) ? `S/. ${value}` : `S/. ${numeric.toLocaleString('es-PE')}`;
 };
 
+const productImageFallback = 'linear-gradient(135deg, #d9c7b5, #f3eee8)';
+
 const mapProductType = (type: string | undefined): ProductType => {
   if (type === 'ECO') return 'eco';
   if (type === 'NORMAL') return 'normal';
@@ -32,25 +34,26 @@ const mapProductTypeToApi = (type: ProductType) => {
 
 export function mapApiProductToProduct(apiProduct: ApiProduct): Product {
   const numericPrice = Number(apiProduct.numericPrice ?? apiProduct.price ?? 0);
+  const safeTitle = String(apiProduct.title || 'Producto sin nombre').trim();
   const requiresConfirmation = apiProduct.requiresConfirmation === true
     || apiProduct.availabilityType === 'MADE_TO_ORDER'
     || apiProduct.availabilityType === 'CUSTOM_QUOTE';
 
   return {
-    id: apiProduct.id,
+    id: String(apiProduct.id),
     slug: apiProduct.slug,
-    title: apiProduct.title,
+    title: safeTitle,
     description: apiProduct.description ?? '',
     price: money(apiProduct.price ?? numericPrice),
-    numericPrice,
-    image: apiProduct.imageUrl,
+    numericPrice: Number.isFinite(numericPrice) ? numericPrice : 0,
+    image: apiProduct.imageUrl || productImageFallback,
     storeName: apiProduct.producer?.businessName ?? 'Productor no asignado',
     category: apiProduct.category?.name,
     categoryId: apiProduct.categoryId,
     producerId: apiProduct.producerId,
     badge: apiProduct.badge,
     type: mapProductType(apiProduct.type),
-    availabilityType: apiProduct.availabilityType,
+    availabilityType: apiProduct.availabilityType ?? 'IN_STOCK',
     stock: apiProduct.stock ?? undefined,
     estimatedDispatchDays: apiProduct.estimatedDispatchDays ?? undefined,
     requiresConfirmation,
@@ -78,17 +81,19 @@ const toQuery = (filters?: ProductQuery) => {
 };
 
 const normalizeProductsResponse = (response: ApiProductsResponse): PaginatedResponse<Product> => {
-  const items = Array.isArray(response) ? response : response.items;
+  const items = Array.isArray(response) ? response : response?.items ?? [];
   const page = Array.isArray(response) ? 1 : response.page;
   const limit = Array.isArray(response) ? items.length : response.limit;
   const total = Array.isArray(response) ? items.length : response.total;
 
   return {
-    items: items.map(mapApiProductToProduct),
-    total,
-    page,
-    limit,
-    totalPages: Array.isArray(response) ? 1 : response.totalPages ?? Math.max(1, Math.ceil(total / limit)),
+    items: items
+      .filter((item) => Boolean(item?.id))
+      .map(mapApiProductToProduct),
+    total: Number(total) || items.length,
+    page: Number(page) || 1,
+    limit: Number(limit) || items.length || 20,
+    totalPages: Array.isArray(response) ? 1 : response.totalPages ?? Math.max(1, Math.ceil((Number(total) || items.length) / (Number(limit) || 20))),
   };
 };
 

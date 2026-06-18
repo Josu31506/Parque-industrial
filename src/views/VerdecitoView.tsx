@@ -8,18 +8,37 @@ type VerdecitoViewProps = {
   catalogError?: string;
   isLoadingCatalog?: boolean;
   onProductSelect: (productId: string) => void;
+  onRetryCatalog?: () => void;
   onShowSustainableProducts: () => void;
   products: Product[];
 };
+
+const skeletonKeys = ['one', 'two', 'three', 'four'];
+
+function ProductSkeletonGrid() {
+  return (
+    <div className={styles.productGrid} aria-label="Cargando productos sostenibles">
+      {skeletonKeys.map((key) => (
+        <article className={styles.skeletonCard} key={key}>
+          <span className={styles.skeletonImage} />
+          <span className={styles.skeletonLine} />
+          <span className={styles.skeletonLineShort} />
+          <span className={styles.skeletonButton} />
+        </article>
+      ))}
+    </div>
+  );
+}
 
 export default function VerdecitoView({
   catalogError,
   isLoadingCatalog,
   onProductSelect,
+  onRetryCatalog,
   onShowSustainableProducts,
   products,
 }: VerdecitoViewProps) {
-  const ecoProducts = products.filter((product) => product.type === 'eco');
+  const ecoProducts = products.filter((product) => product?.id && product.type === 'eco');
 
   return (
     <main className={styles.mainContent}>
@@ -90,14 +109,28 @@ export default function VerdecitoView({
             </button>
           </div>
 
-          {isLoadingCatalog && <p>Cargando productos sostenibles...</p>}
-          {catalogError && <p>{catalogError}</p>}
+          {isLoadingCatalog && ecoProducts.length === 0 && <ProductSkeletonGrid />}
 
-          {!isLoadingCatalog && !catalogError && ecoProducts.length === 0 && (
-            <p>No hay productos sostenibles disponibles por el momento.</p>
+          {catalogError && (
+            <div className={styles.stateCard}>
+              <h3>No pudimos cargar Verdecito</h3>
+              <p>{catalogError}</p>
+              {onRetryCatalog && (
+                <button className={styles.catalogButton} type="button" onClick={onRetryCatalog}>
+                  Reintentar
+                </button>
+              )}
+            </div>
           )}
 
-          {!isLoadingCatalog && ecoProducts.length > 0 && (
+          {!isLoadingCatalog && !catalogError && ecoProducts.length === 0 && (
+            <div className={styles.stateCard}>
+              <h3>No hay productos sostenibles disponibles</h3>
+              <p>Estamos preparando nuevas opciones para esta linea.</p>
+            </div>
+          )}
+
+          {ecoProducts.length > 0 && (
             <div className={styles.productGrid}>
               {ecoProducts.map((product) => (
                 <ProductCard

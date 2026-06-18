@@ -11,6 +11,7 @@
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 32px;
   align-items: start;
+  min-width: 0;
 }
 
 .cartContent {
@@ -261,6 +262,7 @@
 .summary {
   position: sticky;
   top: 24px;
+  min-width: 0;
 
   padding: 26px;
   border: 1px solid #dfe5dd;
@@ -378,7 +380,7 @@
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 767px) {
   .page {
     padding: 48px 0;
   }
@@ -406,6 +408,12 @@
 
   .empty {
     padding: 30px 24px;
+  }
+
+  .summaryRows p {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
   }
 }
 

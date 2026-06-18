@@ -10,6 +10,7 @@
 .facts {
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 
 .heading h1,
@@ -36,6 +37,7 @@
 
 .panel,
 .resolution {
+  min-width: 0;
   padding: 24px;
   border: 1px solid rgba(15, 44, 89, 0.1);
   border-radius: 16px;
@@ -86,7 +88,7 @@
   color: #a43d35;
 }
 
-@media (max-width: 680px) {
+@media (max-width: 767px) {
   .page {
     padding: 44px 0;
   }
@@ -97,5 +99,10 @@
 
   .actions button {
     width: 100%;
+  }
+
+  .panel,
+  .resolution {
+    padding: 20px;
   }
 }

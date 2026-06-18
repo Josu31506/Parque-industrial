@@ -19,6 +19,7 @@
   align-items: center;
   gap: 50px;
   width: 100%;
+  min-width: 0;
 }
 
 /* Columna izquierda */
@@ -116,7 +117,7 @@
 
 .productGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 22px;
   margin-top: 30px;
 }
@@ -132,6 +133,78 @@
   color: #fff;
   background: var(--color-eco);
   font-weight: 900;
+}
+
+.stateCard,
+.skeletonCard {
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(10, 55, 25, 0.08);
+}
+
+.stateCard {
+  justify-items: start;
+}
+
+.stateCard h3,
+.stateCard p {
+  margin: 0;
+}
+
+.stateCard h3 {
+  color: #0f4a25;
+}
+
+.stateCard p {
+  color: #1d4c2f;
+}
+
+.skeletonCard {
+  min-height: 300px;
+  overflow: hidden;
+}
+
+.skeletonImage,
+.skeletonLine,
+.skeletonLineShort,
+.skeletonButton {
+  display: block;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #e8f5e9 0%, #f8faf6 45%, #e8f5e9 100%);
+  background-size: 220% 100%;
+  animation: skeletonPulse 1.25s ease-in-out infinite;
+}
+
+.skeletonImage {
+  min-height: 190px;
+}
+
+.skeletonLine {
+  height: 16px;
+}
+
+.skeletonLineShort {
+  width: 70%;
+  height: 14px;
+}
+
+.skeletonButton {
+  height: 42px;
+  margin-top: auto;
+}
+
+@keyframes skeletonPulse {
+  from {
+    background-position: 120% 0;
+  }
+
+  to {
+    background-position: -120% 0;
+  }
 }
 
 /* Responsive tablet */
@@ -166,12 +239,12 @@
   }
 
   .productGrid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 /* Responsive móvil */
-@media (max-width: 680px) {
+@media (max-width: 767px) {
   .hero {
     min-height: auto;
     padding: 44px 0 52px;

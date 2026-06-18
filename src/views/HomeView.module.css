@@ -45,6 +45,7 @@
   position: relative;
   z-index: 2;
   max-width: 760px;
+  min-width: 0;
   animation: slideTextIn 520ms ease both;
 }
 
@@ -220,7 +221,7 @@
 
 .categoryGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 22px;
 }
 
@@ -230,8 +231,85 @@
 
 .productGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 22px;
+}
+
+.stateCard,
+.skeletonCard {
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(15, 44, 89, 0.08);
+}
+
+.stateCard {
+  justify-items: start;
+}
+
+.stateCard h3,
+.stateCard p {
+  margin: 0;
+}
+
+.stateCard h3 {
+  color: var(--color-primary);
+}
+
+.stateCard p {
+  color: var(--color-muted);
+}
+
+.skeletonCard {
+  min-height: 260px;
+  overflow: hidden;
+}
+
+.skeletonImage,
+.skeletonImageSmall,
+.skeletonLine,
+.skeletonLineShort,
+.skeletonButton {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #eef3f8 0%, #f8fafc 45%, #eef3f8 100%);
+  background-size: 220% 100%;
+  animation: skeletonPulse 1.25s ease-in-out infinite;
+}
+
+.skeletonImage {
+  min-height: 180px;
+}
+
+.skeletonImageSmall {
+  min-height: 120px;
+}
+
+.skeletonLine {
+  height: 16px;
+}
+
+.skeletonLineShort {
+  width: 70%;
+  height: 14px;
+}
+
+.skeletonButton {
+  height: 42px;
+  margin-top: auto;
+}
+
+@keyframes skeletonPulse {
+  from {
+    background-position: 120% 0;
+  }
+
+  to {
+    background-position: -120% 0;
+  }
 }
 
 .newsletter {
@@ -274,7 +352,7 @@
 @media (max-width: 1040px) {
   .categoryGrid,
   .productGrid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .newsletterLayout {
@@ -286,7 +364,7 @@
   }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 767px) {
   .hero {
     min-height: 560px;
     padding: 58px 0 82px;
@@ -379,5 +457,15 @@
   .newsletterForm button {
     width: 100%;
     min-width: 0;
+  }
+}
+
+@media (max-width: 360px) {
+  .hero {
+    padding-top: 46px;
+  }
+
+  .hero h1 {
+    font-size: clamp(2rem, 12vw, 2.75rem);
   }
 }

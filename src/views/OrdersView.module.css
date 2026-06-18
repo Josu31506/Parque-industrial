@@ -8,6 +8,7 @@
 
 .content {
   max-width: 1050px;
+  min-width: 0;
 }
 
 .heading {
@@ -98,6 +99,7 @@
   grid-template-columns: 1.5fr 0.7fr auto auto;
   align-items: center;
   gap: 22px;
+  min-width: 0;
 
   padding: 22px;
   border: 1px solid #dfe5dd;
@@ -235,7 +237,7 @@
   }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 767px) {
   .page {
     padding: 48px 0;
   }
@@ -267,5 +269,15 @@
 
   .refreshButton {
     width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .orderInfo {
+    flex-direction: column;
+  }
+
+  .orderIcon {
+    flex-basis: auto;
   }
 }

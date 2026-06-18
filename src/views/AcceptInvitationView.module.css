@@ -13,6 +13,7 @@
   width: min(760px, 100%);
   display: grid;
   gap: 22px;
+  min-width: 0;
   padding: 34px;
   border: 1px solid rgba(15, 44, 89, 0.1);
   border-radius: 24px;
@@ -129,7 +130,7 @@
   cursor: pointer;
 }
 
-@media (max-width: 680px) {
+@media (max-width: 767px) {
   .page {
     padding: 48px 0;
   }
@@ -146,5 +147,11 @@
   .actions,
   .actions button {
     width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .card {
+    padding: 20px;
   }
 }

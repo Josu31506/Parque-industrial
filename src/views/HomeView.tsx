@@ -14,6 +14,7 @@ type HomeViewProps = {
   onProductSelect: (productId: string) => void;
   onNavigate: (view: ViewName) => void;
   onRequestQuote: () => void;
+  onRetryCatalog: () => void;
   onShowSustainableProducts: () => void;
   products: Product[];
 };
@@ -80,6 +81,37 @@ const getCategoryImage = (category: CategoryWithOptionalImageUrl) => {
   );
 };
 
+const skeletonKeys = ['one', 'two', 'three', 'four'];
+
+function ProductSkeletonGrid() {
+  return (
+    <div className={styles.productGrid} aria-label="Cargando productos">
+      {skeletonKeys.map((key) => (
+        <article className={styles.skeletonCard} key={key}>
+          <span className={styles.skeletonImage} />
+          <span className={styles.skeletonLine} />
+          <span className={styles.skeletonLineShort} />
+          <span className={styles.skeletonButton} />
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function CategorySkeletonGrid() {
+  return (
+    <div className={styles.categoryGrid} aria-label="Cargando categorias">
+      {skeletonKeys.map((key) => (
+        <article className={styles.skeletonCard} key={key}>
+          <span className={styles.skeletonImageSmall} />
+          <span className={styles.skeletonLine} />
+          <span className={styles.skeletonLineShort} />
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export default function HomeView({
   catalogError,
   categories,
@@ -89,6 +121,7 @@ export default function HomeView({
   onProductSelect,
   onNavigate,
   onRequestQuote,
+  onRetryCatalog,
   onShowSustainableProducts,
   products,
 }: HomeViewProps) {
@@ -312,9 +345,9 @@ export default function HomeView({
             </button>
           </div>
 
-          {isLoadingCatalog && <p>Cargando categorías...</p>}
+          {isLoadingCatalog && displayCategories.length === 0 && <CategorySkeletonGrid />}
 
-          {!isLoadingCatalog && (
+          {displayCategories.length > 0 && (
             <div className={styles.categoryGrid}>
               {displayCategories.map((category) => (
                 <CategoryCard
@@ -323,6 +356,13 @@ export default function HomeView({
                   onClick={() => onCategorySelect(category.name)}
                 />
               ))}
+            </div>
+          )}
+
+          {!isLoadingCatalog && displayCategories.length === 0 && (
+            <div className={styles.stateCard}>
+              <h3>No hay categorias disponibles</h3>
+              <p>Cuando el catalogo este disponible apareceran aqui.</p>
             </div>
           )}
         </div>
@@ -337,14 +377,26 @@ export default function HomeView({
             </button>
           </div>
 
-          {isLoadingCatalog && <p>Cargando productos...</p>}
-          {catalogError && <p>{catalogError}</p>}
+          {isLoadingCatalog && products.length === 0 && <ProductSkeletonGrid />}
 
-          {!isLoadingCatalog && !catalogError && products.length === 0 && (
-            <p>No hay productos disponibles por el momento.</p>
+          {catalogError && (
+            <div className={styles.stateCard}>
+              <h3>No pudimos cargar el catalogo</h3>
+              <p>{catalogError}</p>
+              <button className="primaryButton" type="button" onClick={onRetryCatalog}>
+                Reintentar
+              </button>
+            </div>
           )}
 
-          {!isLoadingCatalog && products.length > 0 && (
+          {!isLoadingCatalog && !catalogError && products.length === 0 && (
+            <div className={styles.stateCard}>
+              <h3>No hay productos disponibles</h3>
+              <p>Estamos preparando el catalogo para mostrarlo aqui.</p>
+            </div>
+          )}
+
+          {products.length > 0 && (
             <div className={styles.productGrid}>
               {products.map((product) => (
                 <ProductCard

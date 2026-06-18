@@ -4,6 +4,7 @@ export const AUTH_USER_KEY = 'user';
 
 type RequestOptions = RequestInit & {
   skipAuth?: boolean;
+  timeoutMs?: number;
 };
 
 export class ApiError extends Error {
@@ -37,6 +38,11 @@ export function clearAuthStorage() {
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const token = getAccessToken();
   const headers = new Headers(options.headers);
+  const timeoutMs = options.timeoutMs ?? 45000;
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  options.signal?.addEventListener('abort', () => controller.abort(), { once: true });
 
   if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
@@ -46,10 +52,24 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new ApiError('La solicitud tardó demasiado. Intenta nuevamente.', 408);
+    }
+
+    throw new ApiError('No se pudo conectar con el servidor.', 0);
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {

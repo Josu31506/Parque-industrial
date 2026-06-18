@@ -6,6 +6,7 @@
 
 .content {
   max-width: 1080px;
+  min-width: 0;
 }
 
 .heading {
@@ -75,6 +76,7 @@
   grid-template-columns: minmax(0, 1.4fr) 0.5fr 0.5fr auto auto;
   align-items: center;
   gap: 18px;
+  min-width: 0;
 }
 
 .card h2 {
@@ -145,8 +147,14 @@
   }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 767px) {
   .page {
     padding: 48px 0;
+  }
+
+  .empty,
+  .card {
+    padding: 20px;
+    border-radius: 20px;
   }
 }

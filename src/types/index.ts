@@ -487,6 +487,7 @@ export type ApiCategory = {
   slug?: string;
   description?: string | null;
   icon?: string | null;
+  imageUrl?: string | null;
 };
 
 export type ApiProduct = {

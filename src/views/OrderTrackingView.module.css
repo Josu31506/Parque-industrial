@@ -8,6 +8,7 @@
 
 .content {
   max-width: 980px;
+  min-width: 0;
 }
 
 .heading {
@@ -49,7 +50,7 @@
 
 .summary {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
   padding: 26px;
   background: linear-gradient(135deg, #eef7e8, #ffffff);
@@ -327,7 +328,7 @@
   font-weight: 900;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 767px) {
   .page {
     padding: 48px 0;
   }
@@ -353,5 +354,49 @@
   .actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .card,
+  .producerCard,
+  .claimForm {
+    border-radius: 20px;
+  }
+
+  .summary,
+  .timeline,
+  .producerCard,
+  .claimForm {
+    padding: 18px;
+  }
+
+  .productList p,
+  .previewItem {
+    grid-template-columns: 1fr;
+  }
+
+  .previewItem img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .previewItem span {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 360px) {
+  .step {
+    grid-template-columns: 40px 1fr;
+    gap: 12px;
+  }
+
+  .marker {
+    width: 38px;
+    height: 38px;
+  }
+
+  .step::before {
+    left: 18px;
   }
 }

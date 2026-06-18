@@ -50,6 +50,7 @@
   position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 0;
   border: 0;
@@ -140,6 +141,10 @@
     gap: 14px;
   }
 
+  .menu button {
+    min-height: 36px;
+  }
+
   .actions {
     width: 100%;
     align-items: stretch;
@@ -159,7 +164,7 @@
   }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 767px) {
   .navbar {
     align-items: center;
     flex-direction: column;
@@ -197,6 +202,7 @@
     padding: 8px 10px;
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.08);
+    text-align: center;
   }
 
   .actions {
@@ -209,5 +215,15 @@
   .search input,
   .actions button {
     width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .menu {
+    grid-template-columns: 1fr;
+  }
+
+  .logoImage {
+    width: 140px;
   }
 }

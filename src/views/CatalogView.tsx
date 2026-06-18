@@ -11,6 +11,7 @@ type CatalogViewProps = {
   isLoadingCatalog?: boolean;
   onProductSelect: (productId: string) => void;
   onPageChange?: (page: number) => void;
+  onRetryCatalog?: () => void;
   pageInfo?: { page: number; total: number; totalPages: number };
   producers: Producer[];
   products: Product[];
@@ -19,6 +20,23 @@ type CatalogViewProps = {
 
 const normalize = (value: string) => value.trim().toLowerCase();
 
+const skeletonKeys = ['one', 'two', 'three', 'four'];
+
+function ProductSkeletonGrid() {
+  return (
+    <div className={styles.productGrid} aria-label="Cargando productos">
+      {skeletonKeys.map((key) => (
+        <article className={styles.skeletonCard} key={key}>
+          <span className={styles.skeletonImage} />
+          <span className={styles.skeletonLine} />
+          <span className={styles.skeletonLineShort} />
+          <span className={styles.skeletonButton} />
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export default function CatalogView({
   catalogError,
   categories,
@@ -26,6 +44,7 @@ export default function CatalogView({
   isLoadingCatalog,
   onProductSelect,
   onPageChange,
+  onRetryCatalog,
   pageInfo,
   producers,
   products,
@@ -51,7 +70,9 @@ export default function CatalogView({
   ), [producers]);
 
   const filteredProducts = products.filter((product) => {
-    const text = normalize(`${product.title} ${product.storeName} ${product.category ?? ''}`);
+    if (!product?.id) return false;
+
+    const text = normalize(`${product.title ?? ''} ${product.storeName ?? ''} ${product.category ?? ''}`);
     const matchesQuery = query ? text.includes(normalize(query)) : true;
     const matchesCategory = category
       ? product.category === category || product.categoryId === category
@@ -151,8 +172,19 @@ export default function CatalogView({
           </span>
         </div>
 
-        {isLoadingCatalog && <p>Cargando productos...</p>}
-        {catalogError && <p>{catalogError}</p>}
+        {isLoadingCatalog && filteredProducts.length === 0 && <ProductSkeletonGrid />}
+
+        {catalogError && (
+          <div className={styles.empty}>
+            <h2>No pudimos cargar el catalogo</h2>
+            <p>{catalogError}</p>
+            {onRetryCatalog && (
+              <button className="primaryButton" type="button" onClick={onRetryCatalog}>
+                Reintentar
+              </button>
+            )}
+          </div>
+        )}
 
         {!isLoadingCatalog && filteredProducts.length > 0 ? (
           <>
@@ -178,7 +210,7 @@ export default function CatalogView({
               </div>
             )}
           </>
-        ) : !isLoadingCatalog ? (
+        ) : !isLoadingCatalog && !catalogError ? (
           <div className={styles.empty}>
             <h2>No encontramos productos con esos filtros</h2>
             <p>Prueba con otra categoria, productora o termino de busqueda.</p>

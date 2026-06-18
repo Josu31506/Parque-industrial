@@ -47,7 +47,7 @@
   font-weight: 900;
 }
 
-@media (max-width: 680px) {
+@media (max-width: 767px) {
   .footer {
     padding: 34px 0;
     text-align: center;
@@ -80,5 +80,15 @@
   .payments span {
     min-width: 58px;
     min-height: 32px;
+  }
+}
+
+@media (max-width: 360px) {
+  .payments {
+    flex-direction: column;
+  }
+
+  .payments span {
+    width: 100%;
   }
 }

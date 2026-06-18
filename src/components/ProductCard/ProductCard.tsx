@@ -39,6 +39,9 @@ export default function ProductCard({
   oldPrice,
   onClick,
 }: ProductCardProps) {
+  const safeTitle = title || 'Producto sin nombre';
+  const safePrice = price || 'Precio no disponible';
+  const safeStoreName = storeName || 'Productor no asignado';
   const normalizedBadge = badge?.toLowerCase() ?? '';
   const badgeType = normalizedBadge.includes('sostenible')
     ? 'eco'
@@ -54,22 +57,22 @@ export default function ProductCard({
         className={styles.imageButton}
         type="button"
         onClick={onClick}
-        aria-label={`Ver detalle de ${title}`}
+        aria-label={`Ver detalle de ${safeTitle}`}
       >
         <span className={styles.image} style={getImageStyle(image)} />
       </button>
 
       <div className={styles.info}>
-        <p className={styles.storeName}>{getProducerDisplayName({ name: storeName })}</p>
+        <p className={styles.storeName}>{getProducerDisplayName({ name: safeStoreName })}</p>
         <p className={styles.category}>{getCategoryDisplayName(undefined, category)}</p>
         <button className={styles.titleButton} type="button" onClick={onClick}>
-          <h3>{title}</h3>
+          <h3>{safeTitle}</h3>
         </button>
         <p className={styles.rating}>
           ***** <span>{rating}</span>
         </p>
         <div className={styles.priceRow}>
-          <span className={styles.price}>{price}</span>
+          <span className={styles.price}>{safePrice}</span>
           {oldPrice && <span className={styles.oldPrice}>{oldPrice}</span>}
         </div>
         <button className="primaryButton" type="button" onClick={onClick}>Ver producto</button>

@@ -409,7 +409,7 @@ export default function App() {
   const [catalogPage, setCatalogPage] = useState(1);
   const [catalogCategories, setCatalogCategories] = useState<Category[]>(() => initialCatalogCache?.data.categories ?? []);
   const [catalogProducers, setCatalogProducers] = useState<Producer[]>(() => initialCatalogCache?.data.producers ?? []);
-  const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(() => !initialCatalogCache?.data.products.length);
   const [catalogSynced, setCatalogSynced] = useState(() => Boolean(initialCatalogCache?.data.products.length));
   const [catalogError, setCatalogError] = useState('');
   const [cartItems, setCartItems] = useState<CartItem[]>(() => initialCartCache?.data ?? []);
@@ -1269,6 +1269,10 @@ export default function App() {
 
   const handleCatalogPageChange = (page: number) => {
     void fetchCatalogOnce({ force: true, page });
+  };
+
+  const handleRetryCatalog = () => {
+    void fetchCatalogOnce({ force: true, page: view === 'catalog' ? catalogPage : 1 });
   };
 
   const handleOrdersPageChange = (page: number) => {
@@ -2174,6 +2178,7 @@ export default function App() {
           isLoadingCatalog={isLoadingCatalog}
           onPageChange={handleCatalogPageChange}
           onProductSelect={(productId) => openProduct(productId, 'catalog')}
+          onRetryCatalog={handleRetryCatalog}
           pageInfo={catalogPageInfo}
           producers={catalogProducers}
           products={catalogProducts}
@@ -2188,6 +2193,7 @@ export default function App() {
           catalogError={catalogError}
           isLoadingCatalog={isLoadingCatalog}
           onProductSelect={(productId) => openProduct(productId, 'verdecito')}
+          onRetryCatalog={handleRetryCatalog}
           onShowSustainableProducts={handleShowSustainableProducts}
           products={catalogProducts}
         />
@@ -2424,6 +2430,7 @@ export default function App() {
         onOpenCatalog={() => handleNavigateToCatalog()}
         onProductSelect={(productId) => openProduct(productId, 'home')}
         onRequestQuote={handleOpenQuoteOptions}
+        onRetryCatalog={handleRetryCatalog}
         onShowSustainableProducts={handleShowSustainableProducts}
         products={catalogProducts}
       />

@@ -9,12 +9,14 @@
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
   gap: 28px;
   align-items: start;
+  min-width: 0;
 }
 
 .form,
 .summary {
   display: grid;
   gap: 18px;
+  min-width: 0;
   padding: 28px;
   border: 1px solid rgba(15, 44, 89, 0.1);
   border-radius: 16px;
@@ -101,7 +103,7 @@
   }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 767px) {
   .page {
     padding: 44px 0;
   }
@@ -116,5 +118,10 @@
 
   .actions button {
     width: 100%;
+  }
+
+  .form,
+  .summary {
+    padding: 20px;
   }
 }

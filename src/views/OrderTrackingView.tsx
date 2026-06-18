@@ -84,7 +84,8 @@ export default function OrderTrackingView({
     && !isVerified
     && order.fundsStatus !== 'RELEASED'
     && order.fundsStatus !== 'HELD_BY_CLAIM'
-    && (!claimDeadline || new Date() <= claimDeadline),
+    && claimDeadline
+    && new Date() <= claimDeadline,
   );
   const isClaimDeadlineExpired = Boolean(
     order
@@ -118,6 +119,8 @@ export default function OrderTrackingView({
       setShowClaimForm(false);
       setClaimFiles([]);
       form.reset();
+    } catch (error) {
+      setClaimError(error instanceof Error ? error.message : 'No se pudo enviar el reclamo.');
     } finally {
       setIsSubmittingClaim(false);
     }

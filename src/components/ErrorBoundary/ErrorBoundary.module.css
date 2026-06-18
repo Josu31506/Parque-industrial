@@ -1,0 +1,56 @@
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background:
+    radial-gradient(circle at top left, rgba(229, 152, 102, 0.14), transparent 34%),
+    #f7fafc;
+}
+
+.card {
+  width: min(560px, 100%);
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+  padding: 30px;
+  border: 1px solid rgba(15, 44, 89, 0.1);
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 20px 48px rgba(15, 44, 89, 0.1);
+}
+
+.card span {
+  color: #e59866;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.card h1 {
+  margin: 0;
+  color: #0f2c59;
+  font-size: clamp(1.8rem, 7vw, 2.5rem);
+  line-height: 1.08;
+}
+
+.card p {
+  margin: 0;
+  color: #5f6f84;
+  line-height: 1.6;
+}
+
+@media (max-width: 767px) {
+  .page {
+    padding: 20px;
+  }
+
+  .card {
+    padding: 24px;
+  }
+
+  .card button {
+    width: 100%;
+  }
+}
