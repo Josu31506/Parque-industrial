@@ -20,12 +20,21 @@
   color: var(--color-accent);
 }
 
-.image {
-  min-height: 128px;
+.imageFrame {
+  display: block;
+  width: 100%;
+  aspect-ratio: 14 / 9;
   margin-bottom: 16px;
+  overflow: hidden;
   border-radius: 8px;
-  background-position: center;
-  background-size: cover;
+  background: linear-gradient(135deg, #e59866, #f7eee8);
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .card h3 {
@@ -38,8 +47,8 @@
     padding: 16px;
   }
 
-  .image {
-    min-height: 112px;
+  .imageFrame {
+    aspect-ratio: 16 / 10;
   }
 }
 
