@@ -37,6 +37,7 @@ import {
   deactivateProduct as deactivateRemoteProduct,
   getMyProducts,
   getProducts as fetchProducts,
+  getProductById,
   updateProduct as updateRemoteProduct,
   type ProductFormInput,
 } from './services/productsService';
@@ -394,12 +395,36 @@ const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number) => {
   }
 };
 
+const getInitialProductId = (): string | null => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('id');
+};
+
 let sharedMeRequest: Promise<User> | null = null;
 
 export default function App() {
   const [view, setView] = useState<ViewName>(() => getInitialView());
   const [activeProducerId, setActiveProducerId] = useState('muebles-ves');
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(() => getInitialProductId());
+  const [detailProduct, setDetailProduct] = useState<Product | null>(() => {
+    const initialView = getInitialView();
+    const initialProductId = getInitialProductId();
+    if (initialView === 'productDetail' && initialProductId) {
+      const found = (initialCatalogCache?.data.products ?? []).find((p) => p.id === initialProductId);
+      return found ?? null;
+    }
+    return null;
+  });
+  const [isLoadingDetailProduct, setIsLoadingDetailProduct] = useState(() => {
+    const initialView = getInitialView();
+    const initialProductId = getInitialProductId();
+    if (initialView === 'productDetail' && initialProductId) {
+      const found = (initialCatalogCache?.data.products ?? []).some((p) => p.id === initialProductId);
+      return !found;
+    }
+    return false;
+  });
+  const [detailProductError, setDetailProductError] = useState(false);
   const [sellerEditingProductId, setSellerEditingProductId] = useState<string | null>(null);
   const [previousView, setPreviousView] = useState<ViewName>('home');
   const [catalogFilter, setCatalogFilter] = useState<CatalogFilter | null>(null);
@@ -913,15 +938,15 @@ export default function App() {
 
   const setViewWithHistory = (
     nextView: ViewName,
-    options: { replace?: boolean; scroll?: boolean } = {},
+    options: { replace?: boolean; scroll?: boolean; customPath?: string } = {},
   ) => {
-    const path = viewToPath[nextView] ?? '/';
+    const path = options.customPath ?? viewToPath[nextView] ?? '/';
 
     setView(nextView);
 
     if (options.replace) {
       window.history.replaceState({ view: nextView }, '', path);
-    } else if (!isApplyingPopState.current && window.location.pathname !== path) {
+    } else if (!isApplyingPopState.current && (window.location.pathname + window.location.search) !== path) {
       window.history.pushState({ view: nextView }, '', path);
     }
 
@@ -936,7 +961,24 @@ export default function App() {
   }, [view, catalogFilter]);
 
   useEffect(() => {
-    window.history.replaceState({ view }, '', viewToPath[view] ?? '/');
+    // Invalida el caché en el montaje inicial para sincronizar la eliminación de productos de prueba
+    removeCache(SELLER_DASHBOARD_CACHE_KEY);
+    removeCache(CATALOG_CACHE_KEY);
+    lastSellerDashboardFetchRef.current = {
+      products: 0,
+      quotes: 0,
+      requests: 0,
+      sales: 0,
+      earnings: 0,
+      profile: 0,
+    };
+    lastCatalogFetchRef.current = 0;
+
+    let path = viewToPath[view] ?? '/';
+    if (view === 'productDetail' && selectedProductId) {
+      path = `${path}?id=${selectedProductId}`;
+    }
+    window.history.replaceState({ view }, '', path);
 
     const handlePopState = (event: PopStateEvent) => {
       const nextView = (event.state?.view as ViewName | undefined)
@@ -945,6 +987,8 @@ export default function App() {
 
       isApplyingPopState.current = true;
       setView(nextView);
+      const params = new URLSearchParams(window.location.search);
+      setSelectedProductId(params.get('id'));
       window.requestAnimationFrame(() => {
         isApplyingPopState.current = false;
       });
@@ -954,6 +998,46 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  useEffect(() => {
+    if (view !== 'productDetail' || !selectedProductId) {
+      setDetailProduct(null);
+      setIsLoadingDetailProduct(false);
+      setDetailProductError(false);
+      return;
+    }
+
+    const foundProduct = catalogProducts.find((product) => product.id === selectedProductId)
+      ?? sellerProducts.find((product) => product.id === selectedProductId);
+
+    if (foundProduct) {
+      setDetailProduct(foundProduct);
+      setIsLoadingDetailProduct(false);
+      setDetailProductError(false);
+      return;
+    }
+
+    let active = true;
+    setIsLoadingDetailProduct(true);
+    setDetailProductError(false);
+
+    getProductById(selectedProductId)
+      .then((product) => {
+        if (!active) return;
+        setDetailProduct(product);
+        setIsLoadingDetailProduct(false);
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error('Error loading product by ID:', error);
+        setDetailProductError(true);
+        setIsLoadingDetailProduct(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedProductId, view, catalogProducts, sellerProducts]);
 
   useEffect(() => {
     const handleAuthLogout = () => {
@@ -1296,7 +1380,7 @@ export default function App() {
     setSelectedProductId(productId);
     setCartMessage('');
     setPreviousView(sourceView === 'productDetail' ? 'home' : sourceView);
-    navigate('productDetail');
+    setViewWithHistory('productDetail', { customPath: `/product-detail?id=${productId}` });
   };
 
   const openQuoteAction = (action: PendingQuoteAction) => {
@@ -2128,8 +2212,9 @@ export default function App() {
 
   const selectedProduct = catalogProducts.find((product) => product.id === selectedProductId)
     ?? sellerProducts.find((product) => product.id === selectedProductId);
+  const currentProduct = detailProduct || selectedProduct;
   const selectedQuoteProduct = catalogProducts.find((product) => product.id === selectedQuoteProductId);
-  const selectedProductProducer = findProducerById(selectedProduct?.producerId);
+  const selectedProductProducer = findProducerById(currentProduct?.producerId);
   const selectedProducer = findProducerById(selectedProducerId ?? undefined);
   const sellerProducer = currentUser?.role === 'SELLER'
     ? catalogProducers.find((producer) => producer.userId === currentUser.id)
@@ -2210,9 +2295,10 @@ export default function App() {
           onEditProduct={handleEditProductFromDetail}
           onProducerSelect={handleProducerSelect}
           onRequestQuote={handleOpenQuoteRequest}
-          product={selectedProduct}
+          product={currentProduct}
           producer={selectedProductProducer}
           sellerProducerId={sellerProducer?.id}
+          isLoading={isLoadingDetailProduct}
         />
       );
     }

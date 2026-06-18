@@ -125,6 +125,7 @@ export type Product = {
   description: string;
   category?: string;
   categoryId?: string;
+  model3dUrl?: string;
   rating?: number;
   oldPrice?: string;
   badge?: string;
@@ -500,6 +501,7 @@ export type ApiProduct = {
   price?: number | string;
   numericPrice?: number | string;
   imageUrl: string;
+  model3dUrl?: string | null;
   badge?: string | null;
   type?: 'FEATURED' | 'ECO' | 'NORMAL' | string;
   availabilityType: AvailabilityType;

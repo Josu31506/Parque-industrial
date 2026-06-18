@@ -97,16 +97,25 @@
   padding: 6px;
   border-radius: 8px;
   background: #eef3f8;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tabs button {
-  flex: 1;
+  flex: 0 0 auto;
+  min-width: 108px;
   min-height: 42px;
+  padding: 8px 12px;
   border: 0;
   border-radius: 6px;
   color: var(--color-primary);
   background: transparent;
+  font-size: 0.86rem;
   font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .tabs .active {
@@ -180,6 +189,36 @@
   display: grid;
   justify-items: start;
   gap: 10px;
+}
+
+.modelPanel {
+  display: grid;
+  gap: 14px;
+}
+
+.modelViewer {
+  width: 100%;
+  height: min(58vh, 460px);
+  min-height: 340px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #eef3f8, #ffffff);
+  overflow: hidden;
+}
+
+.modelUnavailable {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.modelUnavailable h2,
+.modelUnavailable p,
+.modelPanel p {
+  margin: 0;
 }
 
 .reviewsPanel {
@@ -469,12 +508,15 @@
   }
 
   .tabs {
-    overflow-x: auto;
-    scrollbar-width: thin;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
   }
 
   .tabs button {
-    min-width: 132px;
+    min-width: 102px;
+    padding: 8px 10px;
+    font-size: 0.8rem;
   }
 
   .technicalGrid,
@@ -505,6 +547,11 @@
     width: 100%;
   }
 
+  .modelViewer {
+    height: 320px;
+    min-height: 280px;
+  }
+
   .ratingSelector {
     justify-content: space-between;
   }
@@ -530,6 +577,8 @@
   }
 
   .tabs button {
-    min-width: 118px;
+    min-width: 94px;
+    padding: 7px 8px;
+    font-size: 0.76rem;
   }
 }

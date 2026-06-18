@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/model-viewer": "^4.3.1",
     "@vitejs/plugin-react": "latest",
     "browser-image-compression": "^2.0.2",
     "react": "latest",

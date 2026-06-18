@@ -1,12 +1,12 @@
 import type { CSSProperties } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { reviews as mockReviews } from '../data/reviews';
 import { createReview, getProductReviews, getReviewEligibility } from '../services/reviewsService';
 import type { Producer, Product, ReviewEligibility, ReviewsSummary, User } from '../types';
 import { getCategoryDisplayName, getProducerDisplayName } from '../utils/displayNames';
 import styles from './ProductDetailView.module.css';
 
-type DetailTab = 'description' | 'technical' | 'producer' | 'reviews';
+type DetailTab = 'description' | 'technical' | 'producer' | 'model3d' | 'reviews';
 
 type ProductDetailViewProps = {
   product: Product | undefined;
@@ -19,6 +19,7 @@ type ProductDetailViewProps = {
   onProducerSelect: (producerId: string) => void;
   onRequestQuote: (productId: string) => void;
   sellerProducerId?: string;
+  isLoading?: boolean;
 };
 
 const reviewPageSize = 5;
@@ -33,6 +34,26 @@ const getValue = (value: string | undefined) => value ?? 'No especificado';
 const emptyReviewsSummary: ReviewsSummary = {
   averageRating: null,
   totalReviews: 0,
+};
+
+const demoModelByProductHint = [
+  {
+    hints: ['sofa-modular-lino-gris', 'sofa modular', 'escritorio de madera recuperada'],
+    url: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+  },
+  {
+    hints: ['mesa-comedor-extensible', 'mesa de comedor', 'comedor de roble personalizado'],
+    url: 'https://modelviewer.dev/shared-assets/models/NeilArmstrong.glb',
+  },
+  {
+    hints: ['banco-madera-recuperada', 'banco de madera recuperada'],
+    url: 'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
+  },
+];
+
+const getProductModel3dUrl = (product: Product | undefined) => {
+  if (!product) return undefined;
+  return product.model3dUrl || undefined;
 };
 
 const renderStars = (rating: number) => (
@@ -50,6 +71,7 @@ export default function ProductDetailView({
   product,
   producer,
   sellerProducerId,
+  isLoading = false,
 }: ProductDetailViewProps) {
   const [activeTab, setActiveTab] = useState<DetailTab>('description');
   const [reviewPage, setReviewPage] = useState(0);
@@ -68,6 +90,37 @@ export default function ProductDetailView({
   const [reviewError, setReviewError] = useState('');
   const [reviewSuccess, setReviewSuccess] = useState('');
   const [reviewSubmitLoading, setReviewSubmitLoading] = useState(false);
+  const [modelLoading, setModelLoading] = useState(false);
+  const [modelError, setModelError] = useState(false);
+  const modelViewerRef = useRef<any>(null);
+  const productModel3dUrl = useMemo(() => getProductModel3dUrl(product), [product]);
+
+  useEffect(() => {
+    const viewer = modelViewerRef.current;
+    if (!viewer) return;
+
+    const handleLoad = () => {
+      setModelLoading(false);
+      setModelError(false);
+    };
+
+    const handleError = () => {
+      setModelLoading(false);
+      setModelError(true);
+    };
+
+    viewer.addEventListener('load', handleLoad);
+    viewer.addEventListener('error', handleError);
+
+    // Reset loading and error states when model source changes
+    setModelLoading(true);
+    setModelError(false);
+
+    return () => {
+      viewer.removeEventListener('load', handleLoad);
+      viewer.removeEventListener('error', handleError);
+    };
+  }, [productModel3dUrl, activeTab]);
 
   useEffect(() => {
     setActiveTab('description');
@@ -153,6 +206,22 @@ export default function ProductDetailView({
       ignore = true;
     };
   }, [activeTab, currentUser?.role, product?.id]);
+
+  useEffect(() => {
+    if (activeTab !== 'model3d' || !productModel3dUrl) return;
+
+    void import('@google/model-viewer');
+  }, [activeTab, productModel3dUrl]);
+
+  if (isLoading) {
+    return (
+      <main className={styles.page}>
+        <section className={`${styles.empty} container`}>
+          <h1>Cargando producto...</h1>
+        </section>
+      </main>
+    );
+  }
 
   if (!product) {
     return (
@@ -283,6 +352,9 @@ export default function ProductDetailView({
             <button className={activeTab === 'producer' ? styles.active : undefined} type="button" onClick={() => setActiveTab('producer')}>
               Productora
             </button>
+            <button className={activeTab === 'model3d' ? styles.active : undefined} type="button" onClick={() => setActiveTab('model3d')}>
+              Vista 3D
+            </button>
             <button className={activeTab === 'reviews' ? styles.active : undefined} type="button" onClick={() => setActiveTab('reviews')}>
               Reseñas
             </button>
@@ -321,6 +393,63 @@ export default function ProductDetailView({
                   <button className="primaryButton" type="button" onClick={() => onProducerSelect(producer.id)}>
                     Ver perfil de productora
                   </button>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'model3d' && (
+              <div className={styles.modelPanel}>
+                {productModel3dUrl ? (
+                  modelError ? (
+                    <div className={styles.modelUnavailable}>
+                      <h2>No se pudo cargar este modelo 3D.</h2>
+                      <p>Verifica que el archivo sea un GLB válido y que contenga una escena 3D.</p>
+                    </div>
+                  ) : (
+                    <div style={{ position: 'relative' }}>
+                      {modelLoading && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'rgba(238, 243, 248, 0.85)',
+                            zIndex: 2,
+                            borderRadius: '8px',
+                          }}
+                        >
+                          <p style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>
+                            Cargando modelo 3D...
+                          </p>
+                        </div>
+                      )}
+                      <model-viewer
+                        ref={modelViewerRef}
+                        className={styles.modelViewer}
+                        src={productModel3dUrl}
+                        alt={`Vista 3D de ${product.title}`}
+                        camera-controls
+                        auto-rotate
+                        shadow-intensity="0.8"
+                        exposure="1"
+                        reveal="auto"
+                        camera-orbit="0deg 70deg 105%"
+                        min-camera-orbit="auto auto 65%"
+                        max-camera-orbit="auto auto 180%"
+                      />
+                      {!modelLoading && <p style={{ marginTop: '8px' }}>Arrastra para rotar el modelo y usa zoom para revisar detalles.</p>}
+                    </div>
+                  )
+                ) : (
+                  <div className={styles.modelUnavailable}>
+                    <h2>Vista 3D no disponible</h2>
+                    <p>Este producto aún no tiene vista 3D disponible.</p>
+                  </div>
                 )}
               </div>
             )}

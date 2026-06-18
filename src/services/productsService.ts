@@ -21,6 +21,28 @@ const money = (value: number | string) => {
 
 const productImageFallback = 'linear-gradient(135deg, #d9c7b5, #f3eee8)';
 
+const demoModelByProductHint = [
+  {
+    hints: ['sofa-modular-lino-gris', 'sofa modular', 'escritorio de madera recuperada'],
+    url: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+  },
+  {
+    hints: ['mesa-comedor-extensible', 'mesa de comedor', 'comedor de roble personalizado'],
+    url: 'https://modelviewer.dev/shared-assets/models/NeilArmstrong.glb',
+  },
+  {
+    hints: ['banco-madera-recuperada', 'banco de madera recuperada'],
+    url: 'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
+  },
+];
+
+const getDemoModelUrl = (apiProduct: ApiProduct, title: string) => {
+  const lookupValue = `${apiProduct.id ?? ''} ${apiProduct.slug ?? ''} ${title}`.toLowerCase();
+  return demoModelByProductHint.find((entry) => (
+    entry.hints.some((hint) => lookupValue.includes(hint))
+  ))?.url;
+};
+
 const mapProductType = (type: string | undefined): ProductType => {
   if (type === 'ECO') return 'eco';
   if (type === 'NORMAL') return 'normal';
@@ -47,6 +69,7 @@ export function mapApiProductToProduct(apiProduct: ApiProduct): Product {
     price: money(apiProduct.price ?? numericPrice),
     numericPrice: Number.isFinite(numericPrice) ? numericPrice : 0,
     image: apiProduct.imageUrl || productImageFallback,
+    model3dUrl: apiProduct.model3dUrl || undefined,
     storeName: apiProduct.producer?.businessName ?? 'Productor no asignado',
     category: apiProduct.category?.name,
     categoryId: apiProduct.categoryId,
@@ -116,6 +139,7 @@ export type ProductFormInput = {
   title: string;
   type: ProductType;
   colors?: string[];
+  model3dUrl?: string | null;
 };
 
 const normalizeProductPayload = (data: ProductFormInput) => ({
@@ -141,6 +165,7 @@ const normalizeProductPayload = (data: ProductFormInput) => ({
   stock: data.stock === null || data.stock === undefined ? undefined : Number(data.stock),
   title: data.title,
   type: mapProductTypeToApi(data.type),
+  model3dUrl: data.model3dUrl === null ? null : (data.model3dUrl || undefined),
 });
 
 export async function getProducts(filters?: ProductQuery) {

@@ -2,7 +2,7 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import imageCompression from 'browser-image-compression';
 import type { ProductFormInput } from '../services/productsService';
-import { uploadProductImage } from '../services/uploadsService';
+import { uploadProductImage, uploadProductModel } from '../services/uploadsService';
 import type { Category, Producer, Product, PurchaseRequest, PurchaseRequestGroup, Quote, Sale, SellerEarnings } from '../types';
 import { formatOrderNumber, getCategoryDisplayName, getSaleDisplayName } from '../utils/displayNames';
 import {
@@ -126,10 +126,13 @@ function ProductForm({
   const [previewUrl, setPreviewUrl] = useState(initialProduct?.image ?? '');
   const [isOptimizingImage, setIsOptimizingImage] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [selectedModelFile, setSelectedModelFile] = useState<File | null>(null);
+  const [isUploadingModel, setIsUploadingModel] = useState(false);
+  const [model3dUrl, setModel3dUrl] = useState<string | null>(initialProduct?.model3dUrl ?? null);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState('');
-  const isSubmitting = isOptimizingImage || isUploadingImage || isSavingProduct;
+  const isSubmitting = isOptimizingImage || isUploadingImage || isUploadingModel || isSavingProduct;
 
   useEffect(() => {
     const nextRequiresConfirmation = initialProduct?.requiresConfirmation === true
@@ -137,9 +140,11 @@ function ProductForm({
     setSaleMode(nextRequiresConfirmation ? 'confirmation' : 'direct');
     setSelectedImage(null);
     setPreviewUrl(initialProduct?.image ?? '');
+    setSelectedModelFile(null);
+    setModel3dUrl(initialProduct?.model3dUrl ?? null);
     setStatusMessage('');
     setError('');
-  }, [initialProduct?.id, initialProduct?.availabilityType, initialProduct?.image]);
+  }, [initialProduct?.id, initialProduct?.availabilityType, initialProduct?.image, initialProduct?.model3dUrl]);
 
   useEffect(() => () => {
     if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
@@ -174,6 +179,33 @@ function ProductForm({
     if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
     setSelectedImage(file);
     setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleModelChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setError('');
+
+    if (!file) {
+      setSelectedModelFile(null);
+      return;
+    }
+
+    const extension = file.name.toLowerCase().split('.').pop();
+    if (extension !== 'glb') {
+      setError('Solo se permiten archivos con extensión .glb');
+      event.target.value = '';
+      setSelectedModelFile(null);
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setError('El archivo del modelo 3D no debe superar los 10 MB.');
+      event.target.value = '';
+      setSelectedModelFile(null);
+      return;
+    }
+
+    setSelectedModelFile(file);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -236,6 +268,18 @@ function ProductForm({
         setIsUploadingImage(false);
       }
 
+      let finalModel3dUrl = model3dUrl;
+
+      if (selectedModelFile) {
+        setIsUploadingModel(true);
+        setStatusMessage('Subiendo modelo 3D...');
+        timeStart('upload-model');
+        const uploadedModel = await uploadProductModel(selectedModelFile);
+        timeEnd('upload-model');
+        finalModel3dUrl = uploadedModel.url;
+        setIsUploadingModel(false);
+      }
+
       const data: ProductFormInput = {
         availabilityType: saleMode === 'direct' ? 'IN_STOCK' : 'MADE_TO_ORDER',
         badge: getInputValue(formData, 'badge') || undefined,
@@ -258,6 +302,7 @@ function ProductForm({
         stock: saleMode === 'direct' ? Number(stockValue) : null,
         title: getInputValue(formData, 'title'),
         type: getInputValue(formData, 'type') as ProductFormInput['type'],
+        model3dUrl: finalModel3dUrl,
       };
 
       setIsSavingProduct(true);
@@ -275,6 +320,8 @@ function ProductForm({
         setSaleMode('direct');
         setSelectedImage(null);
         setPreviewUrl('');
+        setSelectedModelFile(null);
+        setModel3dUrl(null);
       }
     } catch (requestError) {
       const fallbackMessage = selectedImage
@@ -377,6 +424,83 @@ function ProductForm({
             />
             {isOptimizingImage && <small>Optimizando imagen...</small>}
             {isUploadingImage && <small>Subiendo imagen...</small>}
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.formSection}>
+        <h3>Modelo 3D del producto (opcional)</h3>
+        <div className={styles.formGridWide}>
+          <div className={styles.modelUploadContainer}>
+            {model3dUrl ? (
+              <div className={styles.modelStatusBox}>
+                <div className={styles.modelLoadedRow}>
+                  <span className={styles.modelLoadedText}>✔️ Modelo 3D cargado</span>
+                  <a href={model3dUrl} target="_blank" rel="noopener noreferrer" className={styles.modelLink}>
+                    Ver archivo actual
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModel3dUrl(null);
+                      setSelectedModelFile(null);
+                    }}
+                    className={styles.removeModelButton}
+                  >
+                    Quitar modelo 3D
+                  </button>
+                </div>
+                <div className={styles.replaceModelRow}>
+                  <label className={styles.full}>
+                    <span>Reemplazar modelo (.glb):</span>
+                    <input
+                      accept=".glb,model/gltf-binary"
+                      disabled={isSubmitting}
+                      name="model3dFile"
+                      type="file"
+                      onChange={handleModelChange}
+                    />
+                    {selectedModelFile && (
+                      <span className={styles.selectedFileName}>
+                        Archivo seleccionado: {selectedModelFile.name}
+                      </span>
+                    )}
+                  </label>
+                </div>
+              </div>
+            ) : (
+              <label className={styles.full}>
+                <span>Seleccionar archivo (.glb):</span>
+                <input
+                  accept=".glb,model/gltf-binary"
+                  disabled={isSubmitting}
+                  name="model3dFile"
+                  type="file"
+                  onChange={handleModelChange}
+                />
+                {selectedModelFile ? (
+                  <div className={styles.selectedFileNameRow}>
+                    <span className={styles.selectedFileName}>
+                      Archivo seleccionado: {selectedModelFile.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedModelFile(null);
+                      }}
+                      className={styles.clearSelectedFileButton}
+                    >
+                      Limpiar
+                    </button>
+                  </div>
+                ) : (
+                  <small className={styles.fieldHint}>
+                    Formato permitido: .glb. Tamaño máximo: 10 MB.
+                  </small>
+                )}
+              </label>
+            )}
+            {isUploadingModel && <small className={styles.modelProgressMessage}>Subiendo modelo 3D...</small>}
           </div>
         </div>
       </div>
@@ -796,8 +920,8 @@ export default function SellerDashboardView({
                 <p className={styles.productDescription}>{product.description}</p>
                 {isPendingDelete ? (
                   <div className={styles.deleteConfirm}>
-                    <strong>¿Eliminar este producto?</strong>
-                    <p>Esta accion retirara el producto del catalogo.</p>
+                    <strong>¿Desactivar este producto?</strong>
+                    <p>Esta acción retirará el producto del catálogo.</p>
                     <div className={styles.confirmActions}>
                       <button type="button" disabled={isDeleting} onClick={() => setProductPendingDeleteId(null)}>
                         Cancelar
@@ -808,17 +932,17 @@ export default function SellerDashboardView({
                         disabled={isDeleting}
                         onClick={() => void confirmDeleteProduct(product.id)}
                       >
-                        {isDeleting ? 'Eliminando...' : 'Si, eliminar'}
+                        {isDeleting ? 'Desactivando...' : 'Sí, desactivar'}
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className={styles.cardActions}>
-                    <button className="primaryButton" type="button" onClick={() => openEditProduct(product)}>
+                    <button className={styles.editButton} type="button" onClick={() => openEditProduct(product)}>
                       Editar producto
                     </button>
                     <button className={styles.deleteButton} type="button" onClick={() => setProductPendingDeleteId(product.id)}>
-                      Eliminar producto
+                      Desactivar producto
                     </button>
                     <button className={`${styles.ghostButton} ${styles.detailButton}`} type="button" onClick={() => onViewProduct(product.id)}>
                       Ver detalle

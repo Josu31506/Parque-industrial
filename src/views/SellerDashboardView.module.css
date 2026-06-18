@@ -373,52 +373,116 @@
 .cardActions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
   margin-top: auto;
 }
 
-.detailButton {
-  grid-column: 1 / -1;
+.editButton {
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--color-primary);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(15, 44, 89, 0.08);
+}
+
+.editButton:hover {
+  background: #1c4587;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(15, 44, 89, 0.16);
+}
+
+.editButton:active {
+  transform: translateY(0);
 }
 
 .deleteButton {
   min-height: 42px;
   padding: 10px 14px;
-  border: 1px solid rgba(180, 35, 24, 0.28);
-  border-radius: 999px;
-  color: #b42318;
-  background: #fff4f2;
+  border: 1px solid rgba(217, 45, 32, 0.2);
+  border-radius: 12px;
+  color: #d92d20;
+  background: #fef3f2;
   font: inherit;
-  font-weight: 900;
+  font-weight: 800;
   cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .deleteButton:hover {
-  background: #ffe7e2;
+  background: #fee4e2;
+  border-color: rgba(217, 45, 32, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(217, 45, 32, 0.08);
+}
+
+.deleteButton:active {
+  transform: translateY(0);
 }
 
 .deleteButton:disabled {
   cursor: not-allowed;
-  opacity: 0.7;
+  opacity: 0.6;
+}
+
+.detailButton {
+  grid-column: 1 / -1;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid #e4e7ec;
+  border-radius: 12px;
+  color: #344054;
+  background: #f9fafb;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detailButton:hover {
+  background: #f2f4f7;
+  border-color: #d0d5dd;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.04);
+}
+
+.detailButton:active {
+  transform: translateY(0);
 }
 
 .deleteConfirm {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   margin-top: auto;
-  padding: 14px;
-  border: 1px solid rgba(180, 35, 24, 0.18);
-  border-radius: 16px;
-  background: #fff8f6;
+  padding: 16px;
+  border: 1px solid rgba(219, 100, 90, 0.18);
+  border-radius: 12px;
+  background: #fffbfa;
 }
 
 .deleteConfirm strong {
-  color: #b42318;
+  color: #d92d20;
+  font-weight: 800;
 }
 
 .deleteConfirm p {
   margin: 0;
   color: #667085;
+  font-size: 0.88rem;
 }
 
 .confirmActions {
@@ -428,15 +492,31 @@
 }
 
 .confirmActions button {
-  min-height: 42px;
-  padding: 10px 14px;
-  border: 1px solid #dfe5dd;
-  border-radius: 999px;
-  color: #0d2f5f;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  color: #344054;
   background: #fff;
   font: inherit;
-  font-weight: 900;
+  font-weight: 800;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.confirmActions button:hover {
+  background: #f9fafb;
+}
+
+.confirmActions .deleteButton {
+  border: 0;
+  color: #fff;
+  background: #d92d20;
+}
+
+.confirmActions .deleteButton:hover {
+  background: #b91c1c;
+  box-shadow: 0 4px 12px rgba(217, 45, 32, 0.15);
 }
 
 .productForm {
@@ -575,6 +655,13 @@
   color: #667085;
   font-size: 0.92rem;
   font-weight: 800;
+}
+
+.fieldHint {
+  margin: 0;
+  color: #667085;
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .quoteResponsePage {
@@ -765,6 +852,117 @@
 .modalActions button:disabled {
   cursor: not-allowed;
   opacity: 0.72;
+}
+
+.modelUploadContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.modelStatusBox {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: #f6f8f5;
+  border: 1.5px dashed #adc0aa;
+  border-radius: 12px;
+}
+
+.modelLoadedRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.modelLoadedText {
+  font-weight: 700;
+  color: #2e7d32;
+  font-size: 0.95rem;
+}
+
+.modelLink {
+  color: #0d2f5f;
+  text-decoration: underline;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: color 0.2s ease;
+}
+
+.modelLink:hover {
+  color: #1a5ca8;
+}
+
+.removeModelButton {
+  padding: 6px 12px;
+  background: #ffebee;
+  color: #c62828;
+  border: 1px solid #ffcdd2;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.removeModelButton:hover {
+  background: #c62828;
+  color: #ffffff;
+  border-color: #c62828;
+}
+
+.replaceModelRow {
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.replaceModelRow span {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.selectedFileName {
+  display: inline-block;
+  margin-top: 6px;
+  color: #4a5568;
+  font-size: 0.88rem;
+  font-style: italic;
+  font-weight: 500;
+}
+
+.selectedFileNameRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.clearSelectedFileButton {
+  padding: 4px 10px;
+  background: #edf2f7;
+  color: #4a5568;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clearSelectedFileButton:hover {
+  background: #e2e8f0;
+  color: #2d3748;
+}
+
+.modelProgressMessage {
+  font-weight: 600;
+  color: #3182ce;
+  margin-top: 4px;
 }
 
 @media (max-width: 1040px) {
