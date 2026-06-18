@@ -166,7 +166,7 @@ export default function CartView({
                 Explora los productos disponibles y agrega tus favoritos para continuar
                 con tu pedido.
               </p>
-              <button className="primaryButton" type="button" onClick={() => onNavigate('home')}>
+              <button className="primaryButton" type="button" onClick={() => onNavigate('catalog')}>
                 Explorar productos
               </button>
             </div>
@@ -286,7 +286,7 @@ export default function CartView({
             {checkoutLoading ? 'Procesando pedido...' : primaryLabel}
           </button>
 
-          <button className="accentButton" type="button" onClick={() => onNavigate('home')}>
+          <button className="accentButton" type="button" onClick={() => onNavigate('catalog')}>
             Seguir comprando
           </button>
 

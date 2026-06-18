@@ -478,6 +478,8 @@ export default function App() {
   const [selectedQuoteType, setSelectedQuoteType] = useState<QuoteType>('REFERENCE_IMAGE');
   const [catalogMode, setCatalogMode] = useState<'normal' | 'quote'>('normal');
   const isApplyingPopState = useRef(false);
+  const catalogScrollRef = useRef(0);
+  const currentViewRef = useRef<ViewName>('home');
   const catalogLoadedRef = useRef(Boolean(initialCatalogCache && isCacheFresh(initialCatalogCache.updatedAt, CATALOG_TTL)));
   const catalogRequestRef = useRef<Promise<void> | null>(null);
   const catalogMetadataRequestRef = useRef<Promise<void> | null>(null);
@@ -961,6 +963,10 @@ export default function App() {
   }, [view, catalogFilter]);
 
   useEffect(() => {
+    currentViewRef.current = view;
+  }, [view]);
+
+  useEffect(() => {
     // Invalida el caché en el montaje inicial para sincronizar la eliminación de productos de prueba
     removeCache(SELLER_DASHBOARD_CACHE_KEY);
     removeCache(CATALOG_CACHE_KEY);
@@ -985,6 +991,8 @@ export default function App() {
         ?? pathToView[window.location.pathname]
         ?? 'home';
 
+      const wasInDetail = currentViewRef.current === 'productDetail';
+
       isApplyingPopState.current = true;
       setView(nextView);
       const params = new URLSearchParams(window.location.search);
@@ -992,7 +1000,14 @@ export default function App() {
       window.requestAnimationFrame(() => {
         isApplyingPopState.current = false;
       });
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      if (wasInDetail && nextView !== 'productDetail') {
+        window.setTimeout(() => {
+          window.scrollTo({ top: catalogScrollRef.current, behavior: 'auto' });
+        }, 40);
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -1377,10 +1392,27 @@ export default function App() {
   };
 
   const openProduct = (productId: string, sourceView: ViewName = view) => {
+    // Guardar el scroll actual antes de entrar a ver el detalle del producto
+    catalogScrollRef.current = window.scrollY;
     setSelectedProductId(productId);
     setCartMessage('');
     setPreviousView(sourceView === 'productDetail' ? 'home' : sourceView);
     setViewWithHistory('productDetail', { customPath: `/product-detail?id=${productId}` });
+  };
+
+  const handleProductDetailBack = () => {
+    const targetView = previousView;
+    if (!canAccessView(targetView, currentUser)) {
+      setViewWithHistory(currentUser ? 'home' : 'login');
+      return;
+    }
+
+    setViewWithHistory(targetView, { scroll: false });
+
+    // Restaurar scroll de forma asíncrona para que la vista renderice y calcule su tamaño
+    window.setTimeout(() => {
+      window.scrollTo({ top: catalogScrollRef.current, behavior: 'auto' });
+    }, 40);
   };
 
   const openQuoteAction = (action: PendingQuoteAction) => {
@@ -2291,7 +2323,7 @@ export default function App() {
           cartMessage={cartMessage}
           currentUser={currentUser}
           onAddToCart={addToCart}
-          onBack={() => navigate(previousView)}
+          onBack={handleProductDetailBack}
           onEditProduct={handleEditProductFromDetail}
           onProducerSelect={handleProducerSelect}
           onRequestQuote={handleOpenQuoteRequest}

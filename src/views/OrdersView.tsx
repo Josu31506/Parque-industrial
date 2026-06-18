@@ -50,7 +50,7 @@ export default function OrdersView({
             <button
               className="primaryButton"
               type="button"
-              onClick={() => onNavigate('home')}
+              onClick={() => onNavigate('catalog')}
             >
               Explorar productos
             </button>
